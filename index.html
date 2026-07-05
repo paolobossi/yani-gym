@@ -378,12 +378,16 @@ function planLine(ex){
   const note = ex.note ? ` · ${esc(ex.note)}` : '';
   return `<p class="plan">${target}${note}</p>`;
 }
+function ytSearchUrl(ex){
+  const q = encodeURIComponent((ex.name||'').replace(/\(.*?\)/g,'').trim() + ' exercise how to');
+  return 'https://www.youtube.com/results?search_query=' + q;
+}
 function videoPill(ex){
-  if(ex.videoUrl){
-    return `<a class="pill video" href="${esc(ex.videoUrl)}" target="_blank" rel="noopener"
-             onclick="event.stopPropagation()">▶ Video</a>`;
-  }
-  return `<button class="pill video empty" onclick="setVideo('${ex.id}')">＋ Video</button>`;
+  // explicit pinned link if set, otherwise a YouTube search for the exercise
+  const url = ex.videoUrl ? esc(ex.videoUrl) : ytSearchUrl(ex);
+  const label = ex.videoUrl ? '▶ Video' : '🔍 Video';
+  return `<a class="pill video" href="${url}" target="_blank" rel="noopener"
+           onclick="event.stopPropagation()">${label}</a>`;
 }
 
 /* ===================== Set edits ===================== */
