@@ -31,6 +31,9 @@
     padding:calc(env(safe-area-inset-top) + 10px) 16px 10px;
     display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--line);}
   .topbar h1{font-size:20px;margin:0;font-weight:800;letter-spacing:-.3px;flex:1;}
+  .elapsed{font-size:15px;color:var(--accent);font-variant-numeric:tabular-nums;font-weight:800;
+    flex:0 0 auto;background:var(--accent-d);padding:6px 10px;border-radius:9px;}
+  .modal-sub{color:var(--muted);margin:-6px 0 16px;font-size:14px;}
   .iconbtn{width:40px;height:40px;border-radius:11px;background:var(--panel-2);
     display:flex;align-items:center;justify-content:center;font-size:18px;flex:0 0 auto;}
   .btn{padding:10px 16px;border-radius:11px;background:var(--panel-2);font-weight:600;font-size:15px;}
@@ -77,6 +80,7 @@
     padding:8px 4px;text-transform:none;}
   table.sets th.set-c,table.sets td.set-c{width:44px;}
   table.sets th.prev-c{text-align:left;padding-left:14px;}
+  table.sets th .tgt{display:block;font-size:12px;color:var(--muted);font-weight:700;margin-top:2px;white-space:nowrap;}
   table.sets td{padding:5px 4px;text-align:center;}
   table.sets tr.done td{background:var(--accent-d);}
   .setnum{width:34px;height:32px;border-radius:8px;background:var(--panel-2);
@@ -88,7 +92,7 @@
     background:var(--panel-2);color:var(--txt);text-align:center;font-size:16px;font-weight:600;
     padding:0 4px;}
   .cell-in:focus{outline:none;border-color:var(--blue);background:#0e1830;}
-  tr.done .cell-in{background:transparent;border-color:transparent;}
+  tr.done .cell-in{background:rgba(0,0,0,.25);border-color:rgba(34,197,94,.55);color:var(--txt);}
   .check{width:40px;height:34px;border-radius:9px;background:var(--panel-2);
     display:inline-flex;align-items:center;justify-content:center;font-size:16px;color:var(--muted);}
   tr.done .check{background:var(--accent);color:#04220f;}
@@ -164,20 +168,47 @@ const KEY = 'yaniGym.v2';
 const GROUP_VARS = ['--g0','--g1','--g2','--g3','--g4','--g5'];
 const GROUP_LETTERS = ['A','B','C','D','E','F'];
 
+// Curated video links keyed by exercise name. Backfilled into empty slots on load,
+// so adding a link here reaches existing installs without wiping logged data.
+const VIDEOS = {
+  'Scapular Pull-Up': 'https://youtu.be/BZo9h2Ct72I',
+  'Romanian Deadlift (light)': 'https://youtu.be/GZAKFRNtxLY',
+  'Semi-Kneeling Windmill': 'https://youtu.be/nHABhM_zaPE',
+  'Deadbug': 'https://youtu.be/ItTVzWxiiz0',
+  'Deadlift': 'https://youtu.be/op9kVnSso6Q',
+  'Dumbbell Walking Lunges': 'https://youtu.be/h4BJTumn2pM',
+  'Single-Leg Hop': 'https://youtu.be/qaiiGSvSppU',
+  'Band Tricep Extension': 'https://youtu.be/hJkWQr9V-Hg',
+};
 function ex(name, sets, reps, note, group){
-  return { id: uid(), name, videoUrl:'', type:'reps', targetSets:sets, targetReps:reps, note:note||'', superset:group };
+  return { id: uid(), name, videoUrl: VIDEOS[name]||'', type:'reps', targetSets:sets, targetReps:reps, note:note||'', superset:group };
 }
 const SEED = {
   workouts: [
     {
-      id: uid(), name: 'Day 1 — Squat',
+      id: uid(), name: 'Day 1 — Deadlift',
       exercises: [
-        ex('Jefferson Curl', 2, '10', 'light — 3 kg, slow spinal roll', 0),
+        ex('Scapular Pull-Up', 2, '10', 'bodyweight', 0),
+        ex('Romanian Deadlift (light)', 2, '10', '20 kg', 0),
+        ex('Semi-Kneeling Windmill', 2, '6 / side', '5 kg', 0),
+        ex('Deadbug', 2, '50', 'bodyweight', 0),
+        ex('Deadlift', 3, '8–12', '40 kg', 1),
+        ex('Wide-Grip Push-Up', 3, '8–12', 'bodyweight', 1),
+        ex('Dumbbell Walking Lunges', 3, '14–20', '5 kg / hand', 1),
+        ex('Supinated (underhand) Pull-Up', 3, '6–10', 'assisted if needed', 1),
+        ex('Single-Leg Hop', 3, '20 / leg', 'bodyweight', 2),
+        ex('Band Tricep Extension', 3, '30', 'band', 2),
+      ]
+    },
+    {
+      id: uid(), name: 'Day 2 — Squat',
+      exercises: [
+        ex('Jefferson Curl', 2, '10', '3 kg', 0),
         ex('Split Squat (bodyweight)', 2, '10 / leg', 'bodyweight', 0),
         ex('Twisted Bear Squat', 2, '10', 'bodyweight', 0),
         ex('Air Squat', 2, '10', 'bodyweight', 0),
-        ex('Goblet Squat', 5, '8', '15 kg — main leg lift', 1),
-        ex('Frog Jumps', 5, '10', 'bodyweight (skip if knees complain)', 1),
+        ex('Goblet Squat', 5, '8', '15 kg', 1),
+        ex('Frog Jumps', 5, '10', 'bodyweight', 1),
         ex('Cable Lat Pulldown', 3, '8–12', '27.5 kg', 2),
         ex('High-Step Hip Ext. Iso + Single-Arm Press', 3, '6–10 / side', '7.5 kg', 2),
         ex('V-Up', 2, '15', 'bodyweight', 3),
@@ -185,32 +216,17 @@ const SEED = {
       ]
     },
     {
-      id: uid(), name: 'Day 2 — Bench',
+      id: uid(), name: 'Day 3 — Bench',
       exercises: [
         ex('Psoas Crunch', 2, '8', 'bodyweight', 0),
-        ex('Barbell Bench Press (light)', 2, '10', '20 kg — warm-up weight', 0),
+        ex('Barbell Bench Press (light)', 2, '10', '20 kg', 0),
         ex('Knee-Supported DB Shoulder Rotation', 2, '8–12', '2.5–5 kg', 0),
-        ex('Cossack Squat', 2, '6 / side', 'bodyweight (control depth)', 0),
-        ex('Barbell Bench Press', 4, '8–12', '25 kg — main push, aim to add load', 1),
+        ex('Cossack Squat', 2, '6 / side', 'bodyweight', 0),
+        ex('Barbell Bench Press', 4, '8–12', '25 kg', 1),
         ex('Renegade Row', 4, '10–18', '5 kg / hand', 1),
-        ex('Barbell Hip Thrust', 3, '8–12', '80 kg — main glute lift', 2),
+        ex('Barbell Hip Thrust', 3, '8–12', '80 kg', 2),
         ex('Single-Arm Split-Stance KB Swing', 3, '8 / side', '8 kg', 2),
         ex('Dumbbell Overhead Press', 3, '10–15', '5–7.5 kg', 2),
-      ]
-    },
-    {
-      id: uid(), name: 'Day 3 — Deadlift',
-      exercises: [
-        ex('Scapular Pull-Up', 2, '10', 'bodyweight', 0),
-        ex('Romanian Deadlift (light)', 2, '10', '20 kg — warm-up weight', 0),
-        ex('Semi-Kneeling Windmill', 2, '6 / side', '5 kg', 0),
-        ex('Deadbug', 2, '50', 'bodyweight, slow & controlled', 0),
-        ex('Deadlift', 3, '8–12', '40 kg — main lift, aim to add load', 1),
-        ex('Wide-Grip Push-Up', 3, '8–12', 'bodyweight', 1),
-        ex('Dumbbell Walking Lunges', 3, '14–20', '5 kg / hand', 1),
-        ex('Supinated (underhand) Pull-Up', 3, '6–10', 'assisted if needed', 1),
-        ex('Single-Leg Hop', 3, '20 / leg', 'bodyweight (skip if knees complain)', 2),
-        ex('Band Tricep Extension', 3, '30', 'band', 2),
       ]
     }
   ],
@@ -221,8 +237,12 @@ const SEED = {
 
 function uid(){ return 'x'+Math.random().toString(36).slice(2,9); }
 function load(){
-  try{ const d = JSON.parse(localStorage.getItem(KEY)); if(d && d.workouts) return d; }catch(e){}
-  return structuredClone(SEED);
+  let d = null;
+  try{ const s = JSON.parse(localStorage.getItem(KEY)); if(s && s.workouts) d = s; }catch(e){}
+  if(!d) d = structuredClone(SEED);
+  // backfill curated videos into empty slots (won't overwrite user-pinned links)
+  d.workouts.forEach(w=>w.exercises.forEach(e=>{ if(!e.videoUrl && VIDEOS[e.name]) e.videoUrl = VIDEOS[e.name]; }));
+  return d;
 }
 function save(){ localStorage.setItem(KEY, JSON.stringify(DB)); }
 let DB = load();
@@ -248,12 +268,36 @@ function lastSessionDate(workoutId){
 /* ===================== Routing / render ===================== */
 const app = document.getElementById('app');
 let view = { screen:'home', workoutId:null };
+let activeWorkout = null;   // {id, startedAt}
+let workoutTimer = null;
 
 function go(screen, workoutId){ view={screen,workoutId}; render(); window.scrollTo(0,0); }
 
 function render(){
+  clearInterval(workoutTimer);
   if(view.screen==='home') renderHome();
   else if(view.screen==='workout') renderWorkout();
+}
+
+/* Ask before entering, so the workout is "started" on entry */
+function confirmStart(id){
+  if(activeWorkout && activeWorkout.id===id){ go('workout',id); return; }
+  const w=findW(id); if(!w) return;
+  modal(`<h3>Start workout?</h3>
+    <p class="modal-sub">${esc(w.name)} · ${w.exercises.length} exercises</p>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn primary" onclick="startWorkout('${id}')">Start</button>
+    </div>`);
+}
+function startWorkout(id){
+  activeWorkout={ id, startedAt:Date.now() };
+  closeModal(); go('workout',id);
+}
+function tickElapsed(){
+  if(!activeWorkout) return;
+  const el=document.getElementById('elapsed'); if(!el) return;
+  el.textContent = fmtElapsed(Math.floor((Date.now()-activeWorkout.startedAt)/1000));
 }
 
 /* ---------- Home ---------- */
@@ -263,13 +307,13 @@ function renderHome(){
     const clock = `<svg class="clk" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>`;
     const lastLine = last ? `<p class="last-done">${clock}${relDay(last)}</p>` : '';
     return `<div class="wcard">
-      <div class="body" onclick="go('workout','${w.id}')">
+      <div class="body" onclick="confirmStart('${w.id}')">
         <p class="name">${esc(w.name)}</p>
         <p class="meta">${w.exercises.length} exercise${w.exercises.length!==1?'s':''}</p>
         ${lastLine}
       </div>
       <button class="pill menu" onclick="event.stopPropagation();workoutMenu('${w.id}')">•••</button>
-      <div class="chev" onclick="go('workout','${w.id}')">›</div>
+      <div class="chev" onclick="confirmStart('${w.id}')">›</div>
     </div>`;
   }).join('');
   if(!DB.workouts.length) cards = `<div class="center-empty">No workouts yet.<br>Tap “New Workout” to start.</div>`;
@@ -277,6 +321,7 @@ function renderHome(){
   app.innerHTML = `
     <div class="topbar">
       <h1>🏋️ Yani Gym</h1>
+      <button class="iconbtn" onclick="dataMenu()" title="Data">⤓</button>
     </div>
     <div class="screen">
       ${cards}
@@ -324,9 +369,10 @@ function renderWorkout(){
         </div>
       </div>`;
 
+    const tgt = ex.targetReps ? `<span class="tgt">${esc(ex.targetReps)}</span>` : '';
     const cols = isTime
-      ? `<th class="set-c">Set</th><th class="prev-c">Previous</th><th>Time</th><th>✓</th>`
-      : `<th class="set-c">Set</th><th class="prev-c">Previous</th><th>kg</th><th>Reps</th><th>✓</th>`;
+      ? `<th class="set-c">Set</th><th class="prev-c">Previous</th><th>Time${tgt}</th><th>✓</th>`
+      : `<th class="set-c">Set</th><th class="prev-c">Previous</th><th>kg</th><th>Reps${tgt}</th><th>✓</th>`;
 
     const body = rows.map((r,i)=>{
       const p = prev && prev[i];
@@ -364,6 +410,7 @@ function renderWorkout(){
     <div class="topbar">
       <button class="iconbtn" onclick="go('home')">‹</button>
       <h1>${esc(w.name)}</h1>
+      ${(activeWorkout&&activeWorkout.id===w.id)?`<span class="elapsed" id="elapsed">0:00</span>`:''}
       <button class="btn primary" onclick="finishWorkout('${w.id}')">Finish</button>
     </div>
     <div class="screen">
@@ -374,13 +421,14 @@ function renderWorkout(){
     </div>
     <button class="rest-fab" id="restFab" onclick="openRest()">⏱ Rest</button>`;
   updateRestFab();
+  if(activeWorkout && activeWorkout.id===w.id){ tickElapsed(); workoutTimer=setInterval(tickElapsed,1000); }
 }
 
 function planLine(ex){
-  const reps = ex.targetReps ? ` × ${esc(ex.targetReps)}` : '';
-  const target = `${ex.targetSets||3}${reps}`;
+  const n = ex.targetSets||3;
+  const sets = `${n} set${n!==1?'s':''}`;
   const note = ex.note ? ` · ${esc(ex.note)}` : '';
-  return `<p class="plan">${target}${note}</p>`;
+  return `<p class="plan">${sets}${note}</p>`;
 }
 function ytSearchUrl(ex){
   const q = encodeURIComponent((ex.name||'').replace(/\(.*?\)/g,'').trim() + ' exercise how to');
@@ -438,10 +486,11 @@ function finishWorkout(wid){
   });
   if(!any){
     if(!confirm('No sets were checked off. Finish without saving progress?')) return;
-    delete DB.drafts[wid]; save(); go('home'); return;
+    delete DB.drafts[wid]; activeWorkout=null; save(); go('home'); return;
   }
   DB.sessions.push({ id:uid(), workoutId:wid, date:new Date().toISOString(), log });
   delete DB.drafts[wid];
+  activeWorkout=null;
   save();
   toast('💪 Session saved!');
   go('home');
@@ -686,12 +735,71 @@ function delWorkout(wid){
   DB.workouts=DB.workouts.filter(w=>w.id!==wid); delete DB.drafts[wid]; save(); closeModal(); go('home');
 }
 
+/* ===================== Data export / import ===================== */
+function dataMenu(){
+  const n = DB.sessions.length;
+  modal(`<div class="menu-sheet">
+    <button onclick="exportData()">⬇️  Export data (.json) — ${n} logged session${n!==1?'s':''}</button>
+    <button onclick="importData()">⬆️  Import data (restore backup)</button>
+  </div>`);
+}
+function exportData(){
+  const exName={}, wName={};
+  DB.workouts.forEach(w=>{ wName[w.id]=w.name; w.exercises.forEach(e=>exName[e.id]=e.name); });
+  const out = {
+    app: 'Yani Gym',
+    exportedAt: new Date().toISOString(),
+    // human / AI friendly view
+    program: DB.workouts.map(w=>({
+      workout: w.name,
+      exercises: w.exercises.map(e=>({
+        name:e.name, type:e.type, sets:e.targetSets, targetReps:e.targetReps,
+        startingLoad:e.note, superset: e.superset==null?null:GROUP_LETTERS[e.superset%6]
+      }))
+    })),
+    history: DB.sessions.map(s=>({
+      date: s.date,
+      workout: wName[s.workoutId] || s.workoutId,
+      exercises: Object.entries(s.log).map(([id,rows])=>({ name: exName[id]||id, sets: rows }))
+    })),
+    // exact snapshot for lossless re-import
+    _raw: DB
+  };
+  const blob = new Blob([JSON.stringify(out,null,2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'yani-gym-'+new Date().toISOString().slice(0,10)+'.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
+  closeModal(); toast('📄 Data exported');
+}
+function importData(){
+  const inp = document.createElement('input');
+  inp.type='file'; inp.accept='application/json,.json';
+  inp.onchange = ()=>{
+    const f = inp.files && inp.files[0]; if(!f) return;
+    const r = new FileReader();
+    r.onload = ()=>{
+      let d; try{ d = JSON.parse(r.result); }catch(e){ alert('That file is not valid JSON.'); return; }
+      const raw = d._raw ? d._raw : d;
+      if(!raw || !raw.workouts || !Array.isArray(raw.workouts)){ alert("This doesn't look like a Yani Gym backup."); return; }
+      if(!confirm('Replace all current data with this backup? This cannot be undone.')) return;
+      DB = { workouts: raw.workouts, sessions: raw.sessions||[], drafts: raw.drafts||{}, settings: raw.settings||{restDefault:90} };
+      save(); closeModal(); go('home'); toast('✅ Data imported');
+    };
+    r.readAsText(f);
+  };
+  inp.click();
+}
+
 /* ===================== Helpers ===================== */
 function val(id){ return (document.getElementById(id)||{}).value||''; }
 function num(v){ const n=parseFloat(v); return isNaN(n)?0:n; }
 function esc(s){ return (s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function fmtTime(sec){ sec=Math.max(0,Math.round(sec||0)); const m=Math.floor(sec/60),s=sec%60;
   return m+':'+String(s).padStart(2,'0'); }
+function fmtElapsed(sec){ sec=Math.max(0,sec); const h=Math.floor(sec/3600),m=Math.floor(sec%3600/60),s=sec%60;
+  return (h?h+':'+String(m).padStart(2,'0'):m)+':'+String(s).padStart(2,'0'); }
 function parseTime(str){ str=(str||'').trim(); if(str==='') return '';
   if(str.includes(':')){ const [m,s]=str.split(':'); return (parseInt(m)||0)*60+(parseInt(s)||0); }
   return parseInt(str)||0; }
