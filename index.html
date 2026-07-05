@@ -66,8 +66,8 @@
   .ex-actions{display:flex;gap:8px;flex:0 0 auto;}
   .pill{display:inline-flex;align-items:center;gap:5px;padding:6px 11px;border-radius:9px;
     background:var(--panel-2);font-size:13px;font-weight:600;}
-  .pill.video{color:#ff6b6b;}
-  .pill.video.empty{color:var(--muted);}
+  .pill.video{background:#9a3412;color:#ffedd5;text-decoration:none;}
+  .pill.video.empty{background:#9a3412;color:#ffedd5;}
   .pill.menu{width:36px;justify-content:center;color:var(--muted);}
 
   table.sets{width:100%;border-collapse:collapse;margin-top:4px;}
@@ -385,7 +385,7 @@ function ytSearchUrl(ex){
 function videoPill(ex){
   // explicit pinned link if set, otherwise a YouTube search for the exercise
   const url = ex.videoUrl ? esc(ex.videoUrl) : ytSearchUrl(ex);
-  const label = ex.videoUrl ? '▶ Video' : '🔍 Video';
+  const label = '▶ Video';
   return `<a class="pill video" href="${url}" target="_blank" rel="noopener"
            onclick="event.stopPropagation()">${label}</a>`;
 }
