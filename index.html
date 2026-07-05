@@ -142,6 +142,8 @@
   .grp-dot.on{border-color:#fff;transform:scale(1.06);}
   .modal-actions{display:flex;gap:10px;margin-top:6px;}
   .modal-actions .btn{flex:1;}
+  .modal-stack{display:flex;flex-direction:column;gap:10px;}
+  .modal-stack .btn{width:100%;padding:14px;}
 
   .menu-sheet button{display:block;width:100%;text-align:left;padding:15px 6px;font-size:16px;
     border-bottom:1px solid var(--line);}
@@ -294,6 +296,17 @@ function startWorkout(id){
   activeWorkout={ id, startedAt:Date.now() };
   closeModal(); go('workout',id);
 }
+function confirmExit(id){
+  modal(`<h3>Workout finished?</h3>
+    <div class="modal-stack">
+      <button class="btn primary" onclick="finishWorkout('${id}')">Yes — save &amp; exit</button>
+      <button class="btn danger" onclick="exitNoSave('${id}')">Exit without saving</button>
+      <button class="btn" onclick="closeModal()">No — return to workout</button>
+    </div>`);
+}
+function exitNoSave(id){
+  delete DB.drafts[id]; activeWorkout=null; save(); closeModal(); go('home');
+}
 function tickElapsed(){
   if(!activeWorkout) return;
   const el=document.getElementById('elapsed'); if(!el) return;
@@ -408,7 +421,7 @@ function renderWorkout(){
 
   app.innerHTML = `
     <div class="topbar">
-      <button class="iconbtn" onclick="go('home')">‹</button>
+      <button class="iconbtn" onclick="confirmExit('${w.id}')">‹</button>
       <h1>${esc(w.name)}</h1>
       ${(activeWorkout&&activeWorkout.id===w.id)?`<span class="elapsed" id="elapsed">0:00</span>`:''}
       <button class="btn primary" onclick="finishWorkout('${w.id}')">Finish</button>
@@ -474,6 +487,7 @@ function addSet(wid,exid){
 
 /* ===================== Finish ===================== */
 function finishWorkout(wid){
+  closeModal();
   const w=findW(wid); const draft=DB.drafts[wid]||{};
   const log={};
   let any=false;
