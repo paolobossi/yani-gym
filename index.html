@@ -50,6 +50,8 @@
   .wcard .body{flex:1;min-width:0;}
   .wcard .name{font-size:18px;font-weight:700;margin:0 0 3px;}
   .wcard .meta{font-size:13px;color:var(--muted);}
+  .last-done{font-size:13px;color:var(--muted);margin:5px 0 0;display:flex;align-items:center;gap:5px;}
+  .clk{width:13px;height:13px;flex:0 0 auto;}
   .wcard .chev{color:var(--muted);font-size:20px;}
 
   /* Exercise blocks */
@@ -258,10 +260,13 @@ function render(){
 function renderHome(){
   let cards = DB.workouts.map(w=>{
     const last = lastSessionDate(w.id);
+    const clock = `<svg class="clk" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>`;
+    const lastLine = last ? `<p class="last-done">${clock}${relDay(last)}</p>` : '';
     return `<div class="wcard">
       <div class="body" onclick="go('workout','${w.id}')">
         <p class="name">${esc(w.name)}</p>
-        <p class="meta">${w.exercises.length} exercise${w.exercises.length!==1?'s':''}${last?` · last ${fmtDate(last)}`:''}</p>
+        <p class="meta">${w.exercises.length} exercise${w.exercises.length!==1?'s':''}</p>
+        ${lastLine}
       </div>
       <button class="pill menu" onclick="event.stopPropagation();workoutMenu('${w.id}')">•••</button>
       <div class="chev" onclick="go('workout','${w.id}')">›</div>
@@ -691,6 +696,15 @@ function parseTime(str){ str=(str||'').trim(); if(str==='') return '';
   if(str.includes(':')){ const [m,s]=str.split(':'); return (parseInt(m)||0)*60+(parseInt(s)||0); }
   return parseInt(str)||0; }
 function fmtDate(iso){ const d=new Date(iso); return d.toLocaleDateString(undefined,{day:'numeric',month:'short'}); }
+function relDay(iso){
+  const d=new Date(iso), now=new Date();
+  const a=new Date(d.getFullYear(),d.getMonth(),d.getDate());
+  const b=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  const diff=Math.round((b-a)/86400000);
+  if(diff<=0) return 'Today';
+  if(diff===1) return 'Yesterday';
+  return diff+' days ago';
+}
 let toastT;
 function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
   clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),2200); }
