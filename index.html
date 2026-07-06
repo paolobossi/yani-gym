@@ -55,6 +55,22 @@
   .wcard .meta{font-size:13px;color:var(--muted);}
   .last-done{font-size:13px;color:var(--muted);margin:5px 0 0;display:flex;align-items:center;gap:5px;}
   .clk{width:13px;height:13px;flex:0 0 auto;}
+
+  /* Workouts-per-week chart */
+  .chart-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    padding:16px 16px 10px;margin-bottom:16px;}
+  .chart-title{font-size:17px;font-weight:700;margin:0 0 16px;}
+  .plot{position:relative;height:168px;}
+  .plot .gl{position:absolute;left:0;right:28px;height:0;border-top:1px solid var(--line);}
+  .plot .gl.target{border-top-color:#a855f7;opacity:.55;}
+  .plot .yl{position:absolute;right:0;transform:translateY(-50%);font-size:13px;color:var(--muted);font-weight:600;}
+  .plot .yl.target{color:#a855f7;}
+  .plot .bars{position:absolute;left:0;right:28px;top:0;bottom:0;display:flex;align-items:flex-end;}
+  .plot .bcol{flex:1;height:100%;display:flex;align-items:flex-end;justify-content:center;}
+  .bar{width:56%;max-width:26px;border-radius:6px 6px 3px 3px;background:#3a2a63;transition:height .35s ease;}
+  .bar.hit{background:#a855f7;}
+  .chart-x{display:flex;margin-right:28px;margin-top:7px;}
+  .chart-x span{flex:1;text-align:center;font-size:12px;color:var(--muted);}
   .wcard .chev{color:var(--muted);font-size:20px;}
 
   /* Exercise blocks */
@@ -67,7 +83,7 @@
   .ex-head{padding:12px 14px 6px;display:flex;align-items:flex-start;gap:10px;}
   .ex-title{flex:1;min-width:0;}
   .ex-name{font-size:17px;font-weight:700;color:#8ab4ff;margin:0 0 3px;line-height:1.25;word-break:break-word;}
-  .plan{font-size:13px;color:var(--muted);margin:0;line-height:1.35;}
+  .plan{font-size:15px;color:var(--txt);margin:0;line-height:1.4;font-weight:500;}
   .ex-actions{display:flex;gap:8px;flex:0 0 auto;}
   .pill{display:inline-flex;align-items:center;gap:5px;padding:6px 11px;border-radius:9px;
     background:var(--panel-2);font-size:13px;font-weight:600;}
@@ -98,9 +114,19 @@
   tr.done .check{background:var(--accent);color:#04220f;}
   .addset{width:calc(100% - 24px);margin:8px 12px 12px;padding:11px;border-radius:10px;
     background:var(--panel-2);color:#cbd3df;font-weight:600;font-size:14px;text-align:center;}
+  /* per-set rest divider */
+  .rest-tr td{padding:3px 14px;}
+  .rest-line{position:relative;text-align:center;cursor:pointer;padding:7px 0;}
+  .rest-line::before{content:'';position:absolute;left:0;right:0;top:50%;height:2px;
+    background:#173154;border-radius:2px;}
+  .rest-line span{position:relative;background:var(--panel);padding:0 12px;color:var(--blue);
+    font-weight:700;font-size:14px;font-variant-numeric:tabular-nums;}
+  .rest-bar{background:var(--blue);color:#fff;text-align:center;font-weight:800;font-size:16px;
+    padding:11px 0;border-radius:9px;font-variant-numeric:tabular-nums;cursor:pointer;}
 
   .add-ex-row{display:flex;gap:10px;margin-top:6px;}
   .add-ex-row .btn{flex:1;}
+  .finish-btn{width:100%;margin-top:14px;padding:16px;font-size:17px;}
 
   /* Rest timer floating */
   .rest-fab{position:fixed;right:16px;bottom:calc(20px + env(safe-area-inset-bottom));z-index:40;
@@ -169,6 +195,8 @@
 const KEY = 'yaniGym.v2';
 const GROUP_VARS = ['--g0','--g1','--g2','--g3','--g4','--g5'];
 const GROUP_LETTERS = ['A','B','C','D','E','F'];
+const WORKOUT_EMOJIS = ['🏋️','🦵','💪','🔥','🚴','🤸','🧘','⚡'];
+function wEmoji(w){ const i=DB.workouts.indexOf(w); return WORKOUT_EMOJIS[(i<0?0:i)%WORKOUT_EMOJIS.length]; }
 
 // Curated video links keyed by exercise name. Backfilled into empty slots on load,
 // so adding a link here reaches existing installs without wiping logged data.
@@ -266,6 +294,17 @@ function lastSessionDate(workoutId){
   }
   return null;
 }
+/* Monday-start of the week containing d */
+function weekStart(d){ const x=new Date(d); const off=(x.getDay()+6)%7; x.setDate(x.getDate()-off); x.setHours(0,0,0,0); return x; }
+/* sessions grouped into the last n weeks (oldest→newest) */
+function weeklyCounts(n){
+  const cur=weekStart(new Date());
+  const weeks=[];
+  for(let i=n-1;i>=0;i--){ const ws=new Date(cur); ws.setDate(cur.getDate()-i*7); weeks.push({start:ws,count:0}); }
+  const idx={}; weeks.forEach((w,i)=>idx[w.start.getTime()]=i);
+  DB.sessions.forEach(s=>{ const k=weekStart(new Date(s.date)).getTime(); if(k in idx) weeks[idx[k]].count++; });
+  return weeks;
+}
 
 /* ===================== Routing / render ===================== */
 const app = document.getElementById('app');
@@ -299,9 +338,9 @@ function startWorkout(id){
 function confirmExit(id){
   modal(`<h3>Workout finished?</h3>
     <div class="modal-stack">
-      <button class="btn primary" onclick="finishWorkout('${id}')">Yes — save &amp; exit</button>
+      <button class="btn primary" onclick="finishWorkout('${id}')">Yes, save</button>
       <button class="btn danger" onclick="exitNoSave('${id}')">Exit without saving</button>
-      <button class="btn" onclick="closeModal()">No — return to workout</button>
+      <button class="btn" onclick="closeModal()">Back to workout</button>
     </div>`);
 }
 function exitNoSave(id){
@@ -314,6 +353,29 @@ function tickElapsed(){
 }
 
 /* ---------- Home ---------- */
+function chartCard(){
+  const target = 3;
+  const weeks = weeklyCounts(8);
+  const maxCount = Math.max(0, ...weeks.map(w=>w.count));
+  const yMax = Math.max(4, maxCount);
+  let grid='';
+  for(let v=0; v<=yMax; v++){
+    const top = (1 - v/yMax) * 100;
+    const t = v===target ? 'target' : '';
+    grid += `<div class="gl ${t}" style="top:${top}%"></div><div class="yl ${t}" style="top:${top}%">${v}</div>`;
+  }
+  const bars = weeks.map(w=>{
+    const h = w.count/yMax*100;
+    const bar = w.count>0 ? `<div class="bar ${w.count>=target?'hit':''}" style="height:${h}%"></div>` : '';
+    return `<div class="bcol">${bar}</div>`;
+  }).join('');
+  const xl = weeks.map(w=>`<span>${w.start.getDate()}/${w.start.getMonth()+1}</span>`).join('');
+  return `<div class="chart-card">
+    <p class="chart-title">Workouts Per Week</p>
+    <div class="plot">${grid}<div class="bars">${bars}</div></div>
+    <div class="chart-x">${xl}</div>
+  </div>`;
+}
 function renderHome(){
   let cards = DB.workouts.map(w=>{
     const last = lastSessionDate(w.id);
@@ -321,7 +383,7 @@ function renderHome(){
     const lastLine = last ? `<p class="last-done">${clock}${relDay(last)}</p>` : '';
     return `<div class="wcard">
       <div class="body" onclick="confirmStart('${w.id}')">
-        <p class="name">${esc(w.name)}</p>
+        <p class="name">${WORKOUT_EMOJIS[DB.workouts.indexOf(w)%WORKOUT_EMOJIS.length]} ${esc(w.name)}</p>
         <p class="meta">${w.exercises.length} exercise${w.exercises.length!==1?'s':''}</p>
         ${lastLine}
       </div>
@@ -333,10 +395,11 @@ function renderHome(){
 
   app.innerHTML = `
     <div class="topbar">
-      <h1>🏋️ Yani Gym</h1>
+      <h1>Yani Gym</h1>
       <button class="iconbtn" onclick="dataMenu()" title="Data">⤓</button>
     </div>
     <div class="screen">
+      ${chartCard()}
       ${cards}
     </div>`;
 }
@@ -356,6 +419,7 @@ function ensureDraft(w){
 }
 
 function renderWorkout(){
+  clearInterval(workoutTimer);
   const w = findW(view.workoutId);
   if(!w){ go('home'); return; }
   const draft = ensureDraft(w);
@@ -387,52 +451,55 @@ function renderWorkout(){
       ? `<th class="set-c">Set</th><th class="prev-c">Previous</th><th>Time${tgt}</th><th>✓</th>`
       : `<th class="set-c">Set</th><th class="prev-c">Previous</th><th>kg</th><th>Reps${tgt}</th><th>✓</th>`;
 
+    const colspan = isTime ? 4 : 5;
     const body = rows.map((r,i)=>{
       const p = prev && prev[i];
       const prevTxt = p ? (isTime ? fmtTime(p.time) : `${p.kg||0} × ${p.reps||0}`) : '–';
       const doneCls = r.done?'done':'';
+      let setTr;
       if(isTime){
-        return `<tr class="${doneCls}">
+        setTr = `<tr class="${doneCls}">
           <td class="set-c"><span class="setnum">${i+1}</span></td>
           <td class="prev ${p?'has':''}">${prevTxt}</td>
           <td><input class="cell-in" inputmode="numeric" placeholder="${p?fmtTime(p.time):'0:00'}" value="${r.time!==''?fmtTime(r.time):''}"
                onchange="setTime('${w.id}','${ex.id}',${i},this.value)"></td>
           <td><button class="check" onclick="toggleDone('${w.id}','${ex.id}',${i})">✓</button></td>
         </tr>`;
+      } else {
+        setTr = `<tr class="${doneCls}">
+          <td class="set-c"><span class="setnum">${i+1}</span></td>
+          <td class="prev ${p?'has':''}">${prevTxt}</td>
+          <td><input class="cell-in" inputmode="decimal" placeholder="${p?(p.kg||0):''}" value="${r.kg}"
+               onchange="setVal('${w.id}','${ex.id}',${i},'kg',this.value)"></td>
+          <td><input class="cell-in" inputmode="numeric" placeholder="${p?(p.reps||0):''}" value="${r.reps}"
+               onchange="setVal('${w.id}','${ex.id}',${i},'reps',this.value)"></td>
+          <td><button class="check" onclick="toggleDone('${w.id}','${ex.id}',${i})">✓</button></td>
+        </tr>`;
       }
-      return `<tr class="${doneCls}">
-        <td class="set-c"><span class="setnum">${i+1}</span></td>
-        <td class="prev ${p?'has':''}">${prevTxt}</td>
-        <td><input class="cell-in" inputmode="decimal" placeholder="${p?(p.kg||0):''}" value="${r.kg}"
-             onchange="setVal('${w.id}','${ex.id}',${i},'kg',this.value)"></td>
-        <td><input class="cell-in" inputmode="numeric" placeholder="${p?(p.reps||0):''}" value="${r.reps}"
-             onchange="setVal('${w.id}','${ex.id}',${i},'reps',this.value)"></td>
-        <td><button class="check" onclick="toggleDone('${w.id}','${ex.id}',${i})">✓</button></td>
-      </tr>`;
+      return setTr + restRow(ex, i, colspan);
     }).join('');
 
     blocks += `<div class="ex ${grouped?'grouped':''}" style="${grouped?`--gc:var(${gVar});`:''}">
       ${ssBand}
       ${head}
       <table class="sets"><thead><tr>${cols}</tr></thead><tbody>${body}</tbody></table>
-      <button class="addset" onclick="addSet('${w.id}','${ex.id}')">+ Add Set</button>
+      <button class="addset" onclick="addSet('${w.id}','${ex.id}')">+ Add Set (${fmtTime(exRest(ex))})</button>
     </div>`;
   });
 
   app.innerHTML = `
     <div class="topbar">
       <button class="iconbtn" onclick="confirmExit('${w.id}')">‹</button>
-      <h1>${esc(w.name)}</h1>
+      <h1>${wEmoji(w)} ${esc(w.name)}</h1>
       ${(activeWorkout&&activeWorkout.id===w.id)?`<span class="elapsed" id="elapsed">0:00</span>`:''}
-      <button class="btn primary" onclick="finishWorkout('${w.id}')">Finish</button>
     </div>
     <div class="screen">
       ${blocks || '<div class="center-empty">No exercises yet.</div>'}
       <div class="add-ex-row">
         <button class="btn blue" onclick="addExercise('${w.id}')">+ Add Exercise</button>
       </div>
-    </div>
-    <button class="rest-fab" id="restFab" onclick="openRest()">⏱ Rest</button>`;
+      <button class="btn primary finish-btn" onclick="confirmExit('${w.id}')">Finish Workout</button>
+    </div>`;
   updateRestFab();
   if(activeWorkout && activeWorkout.id===w.id){ tickElapsed(); workoutTimer=setInterval(tickElapsed,1000); }
 }
@@ -442,6 +509,14 @@ function planLine(ex){
   const sets = `${n} set${n!==1?'s':''}`;
   const note = ex.note ? ` · ${esc(ex.note)}` : '';
   return `<p class="plan">${sets}${note}</p>`;
+}
+function exRest(ex){ return (ex && ex.rest!=null) ? ex.rest : (DB.settings.restDefault||90); }
+function restRow(ex,i,colspan){
+  const active = rest.running && rest.anchor && rest.anchor.exId===ex.id && rest.anchor.setIdx===i;
+  const inner = active
+    ? `<div class="rest-bar" id="restbar" onclick="openRest()">${fmtTime(rest.remaining)}</div>`
+    : `<div class="rest-line" onclick="editRest('${ex.id}')"><span>${fmtTime(exRest(ex))}</span></div>`;
+  return `<tr class="rest-tr"><td colspan="${colspan}">${inner}</td></tr>`;
 }
 function ytSearchUrl(ex){
   const q = encodeURIComponent((ex.name||'').replace(/\(.*?\)/g,'').trim() + ' exercise how to');
@@ -474,9 +549,11 @@ function toggleDone(wid,exid,i){
       else { if(row.kg==='')row.kg=prev[i].kg; if(row.reps==='')row.reps=prev[i].reps; }
       save();
     }
-    startRest();
+    startRestFor(exid,i);      // renders the countdown bar under this set
+  } else {
+    if(rest.anchor && rest.anchor.exId===exid && rest.anchor.setIdx===i) stopRest();
+    renderWorkout();
   }
-  renderWorkout();
 }
 function addSet(wid,exid){
   const arr=DB.drafts[wid][exid];
@@ -511,47 +588,58 @@ function finishWorkout(wid){
 }
 
 /* ===================== Rest timer ===================== */
-let rest = { remaining:0, total:0, timer:null, running:false };
-function openRest(){
-  if(!rest.running){ rest.total=DB.settings.restDefault; rest.remaining=rest.total; }
-  showRestOverlay();
+let rest = { remaining:0, total:0, timer:null, running:false, anchor:null };
+/* start a rest anchored to a specific set — shows the inline countdown bar */
+function startRestFor(exId,setIdx){
+  const ex=findW(view.workoutId).exercises.find(e=>e.id===exId);
+  rest.total=exRest(ex); rest.remaining=rest.total; rest.running=true; rest.anchor={exId,setIdx};
+  tickLoop(); renderWorkout();
 }
-function startRest(){
-  rest.total=DB.settings.restDefault; rest.remaining=rest.total; rest.running=true;
-  tickLoop(); updateRestFab();
+/* manual open of the full-screen timer (floating button / tapping the bar) */
+function openRest(){
+  if(!rest.running){ rest.total=DB.settings.restDefault; rest.remaining=rest.total; rest.anchor=null; }
+  showRestOverlay();
 }
 function tickLoop(){
   clearInterval(rest.timer);
   rest.timer=setInterval(()=>{
     rest.remaining--;
-    if(rest.remaining<=0){
-      clearInterval(rest.timer); rest.running=false; rest.remaining=0;
-      beep(); updateRestFab(); const o=document.getElementById('restOverlay'); if(o)o.remove();
-      toast('⏰ Rest over!');
-      return;
-    }
-    updateRestUI();
+    if(rest.remaining<=0){ endRest(true); return; }
+    updateRestDisplays();
   },1000);
 }
+/* end naturally (beep) or via skip/uncheck (silent) */
+function endRest(beeped){
+  clearInterval(rest.timer); rest.running=false; rest.remaining=0; rest.anchor=null;
+  const o=document.getElementById('restOverlay'); if(o)o.remove();
+  if(beeped){ beep(); toast('⏰ Rest over!'); }
+  updateRestFab();
+  if(view.screen==='workout') renderWorkout();
+}
+function stopRest(){ endRest(false); }
+function skipRest(){ endRest(false); }
 function toggleRest(){
   if(rest.running){ clearInterval(rest.timer); rest.running=false; }
   else { rest.running=true; tickLoop(); }
-  updateRestUI(); updateRestFab();
+  updateRestDisplays(); updateRestFab();
 }
 function adjustRest(sec){
   rest.remaining=Math.max(0,rest.remaining+sec);
   rest.total=Math.max(rest.total,rest.remaining);
-  updateRestUI();
+  updateRestDisplays();
 }
 function setRestPreset(sec){
   rest.total=sec; rest.remaining=sec; DB.settings.restDefault=sec; save();
   if(!rest.running){ rest.running=true; tickLoop(); }
-  updateRestUI(); updateRestFab();
+  updateRestDisplays(); updateRestFab();
 }
-function skipRest(){
-  clearInterval(rest.timer); rest.running=false; rest.remaining=0;
-  const o=document.getElementById('restOverlay'); if(o)o.remove();
+/* update every live display: inline bar, floating fab, overlay */
+function updateRestDisplays(){
+  const bar=document.getElementById('restbar'); if(bar) bar.textContent=fmtTime(rest.remaining);
   updateRestFab();
+  const t=document.getElementById('restTime');
+  if(t){ t.textContent=fmtTime(rest.remaining); t.classList.toggle('warn',rest.remaining<=10); }
+  const b=document.getElementById('restPlayBtn'); if(b) b.textContent=rest.running?'Pause':'Start';
 }
 function showRestOverlay(){
   const o=document.createElement('div'); o.className='rest-overlay'; o.id='restOverlay';
@@ -573,10 +661,28 @@ function showRestOverlay(){
   document.body.appendChild(o);
   if(!rest.running && rest.remaining>0){ /* wait for start */ }
 }
-function updateRestUI(){
-  const t=document.getElementById('restTime');
-  if(t){ t.textContent=fmtTime(rest.remaining); t.classList.toggle('warn',rest.remaining<=10); }
-  const b=document.getElementById('restPlayBtn'); if(b) b.textContent=rest.running?'Pause':'Start';
+/* tap a rest line to edit this exercise's rest duration */
+function editRest(exId){
+  const ex=findW(view.workoutId).exercises.find(e=>e.id===exId); if(!ex) return;
+  const set=v=>`document.getElementById('restIn').value='${v}'`;
+  modal(`<h3>Rest timer</h3>
+    <p class="modal-sub">${esc(ex.name)}</p>
+    <div class="field"><label>Rest between sets (mm:ss)</label>
+      <input id="restIn" inputmode="numeric" value="${fmtTime(exRest(ex))}"></div>
+    <div class="rest-presets" style="margin-bottom:16px;">
+      <button class="btn sm" onclick="${set('1:00')}">1:00</button>
+      <button class="btn sm" onclick="${set('1:30')}">1:30</button>
+      <button class="btn sm" onclick="${set('2:00')}">2:00</button>
+      <button class="btn sm" onclick="${set('3:00')}">3:00</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn primary" onclick="saveRest('${exId}')">Save</button>
+    </div>`);
+}
+function saveRest(exId){
+  const ex=findW(view.workoutId).exercises.find(e=>e.id===exId); if(!ex) return;
+  ex.rest=Math.max(0,parseTime(val('restIn'))||0)||90; save(); closeModal(); renderWorkout();
 }
 function updateRestFab(){
   const f=document.getElementById('restFab'); if(!f) return;
