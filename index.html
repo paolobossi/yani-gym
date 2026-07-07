@@ -58,6 +58,8 @@
   .wcard .body{flex:1;min-width:0;}
   .wcard .name{font-size:18px;font-weight:700;margin:0 0 3px;}
   .wcard .meta{font-size:13px;color:var(--muted);}
+  .last-tag{display:inline-block;background:var(--accent);color:#04220f;font-size:11px;font-weight:800;
+    padding:3px 8px;border-radius:7px;margin-left:4px;vertical-align:middle;letter-spacing:.4px;text-transform:uppercase;}
   .last-done{font-size:13px;color:var(--muted);margin:5px 0 0;display:flex;align-items:center;gap:5px;}
   .clk{width:13px;height:13px;flex:0 0 auto;}
 
@@ -221,6 +223,10 @@ const VIDEOS = {
   'Band Tricep Extension': 'https://youtu.be/hJkWQr9V-Hg',
   // Lime Gardens — same movement as Complete Gym's dumbbell walking lunge
   'DB Walking Lunge': 'https://youtu.be/h4BJTumn2pM',
+  'DB Romanian Deadlift': 'https://youtu.be/hQgFixeXdZo',
+  'DB Bench Glute Bridge / Hip Thrust': 'https://youtu.be/29OfN4ztW_g',
+  'DB Calf Raise': 'https://www.youtube.com/shorts/ADITZCcUyVo',
+  'Plank': 'https://youtu.be/pvIjsG5Svck',
 };
 function ex(name, sets, reps, note, group, type){
   return { id: uid(), name, videoUrl: VIDEOS[name]||'', type:type||'reps', targetSets:sets, targetReps:reps, note:note||'', superset:group };
@@ -346,6 +352,7 @@ function lastSessionDate(workoutId){
   }
   return null;
 }
+function lastSessionWorkoutId(){ return DB.sessions.length ? DB.sessions[DB.sessions.length-1].workoutId : null; }
 /* Monday-start of the week containing d */
 function weekStart(d){ const x=new Date(d); const off=(x.getDay()+6)%7; x.setDate(x.getDate()-off); x.setHours(0,0,0,0); return x; }
 /* sessions grouped into the last n weeks (oldest→newest) */
@@ -432,9 +439,10 @@ function dayCard(w){
   const last = lastSessionDate(w.id);
   const clock = `<svg class="clk" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>`;
   const lastLine = last ? `<p class="last-done">${clock}${relDay(last)}</p>` : '';
+  const tag = w.id===lastSessionWorkoutId() ? `<span class="last-tag">Last session</span>` : '';
   return `<div class="wcard">
     <div class="body" onclick="confirmStart('${w.id}')">
-      <p class="name">${wEmoji(w)} ${esc(w.name)}</p>
+      <p class="name">${wEmoji(w)} ${esc(w.name)} ${tag}</p>
       <p class="meta">${w.exercises.length} exercise${w.exercises.length!==1?'s':''}</p>
       ${lastLine}
     </div>
