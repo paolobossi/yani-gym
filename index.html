@@ -47,6 +47,11 @@
   .muted{color:var(--muted);}
   .center-empty{text-align:center;color:var(--muted);padding:60px 20px;}
 
+  /* Program groups */
+  .prog-group{margin-bottom:24px;}
+  .prog-title{font-size:13px;font-weight:800;letter-spacing:1px;text-transform:uppercase;
+    color:var(--muted);margin:2px 0 11px 3px;}
+
   /* Workout list cards */
   .wcard{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
     padding:16px;margin-bottom:12px;display:flex;align-items:center;gap:14px;}
@@ -196,7 +201,12 @@ const KEY = 'yaniGym.v2';
 const GROUP_VARS = ['--g0','--g1','--g2','--g3','--g4','--g5'];
 const GROUP_LETTERS = ['A','B','C','D','E','F'];
 const WORKOUT_EMOJIS = ['🏋️','🦵','💪','🔥','🚴','🤸','🧘','⚡'];
-function wEmoji(w){ const i=DB.workouts.indexOf(w); return WORKOUT_EMOJIS[(i<0?0:i)%WORKOUT_EMOJIS.length]; }
+function wProgram(w){ return w.program || 'Complete Gym'; }
+function wEmoji(w){
+  const same = DB.workouts.filter(x=>wProgram(x)===wProgram(w));
+  const i = same.indexOf(w);
+  return WORKOUT_EMOJIS[(i<0?0:i)%WORKOUT_EMOJIS.length];
+}
 
 // Curated video links keyed by exercise name. Backfilled into empty slots on load,
 // so adding a link here reaches existing installs without wiping logged data.
@@ -209,57 +219,92 @@ const VIDEOS = {
   'Dumbbell Walking Lunges': 'https://youtu.be/h4BJTumn2pM',
   'Single-Leg Hop': 'https://youtu.be/qaiiGSvSppU',
   'Band Tricep Extension': 'https://youtu.be/hJkWQr9V-Hg',
+  // Lime Gardens — same movement as Complete Gym's dumbbell walking lunge
+  'DB Walking Lunge': 'https://youtu.be/h4BJTumn2pM',
 };
-function ex(name, sets, reps, note, group){
-  return { id: uid(), name, videoUrl: VIDEOS[name]||'', type:'reps', targetSets:sets, targetReps:reps, note:note||'', superset:group };
+function ex(name, sets, reps, note, group, type){
+  return { id: uid(), name, videoUrl: VIDEOS[name]||'', type:type||'reps', targetSets:sets, targetReps:reps, note:note||'', superset:group };
+}
+function limeGardensWorkouts(){
+  return [
+    { id: uid(), program:'Lime Gardens', name:'Day 1 — Lower Body', exercises:[
+      ex('Bodyweight Air Squat', 2, '12', 'bodyweight', 0),
+      ex('Bodyweight Split Squat', 2, '10 / leg', 'bodyweight', 0),
+      ex('Glute Bridge', 2, '15', 'bodyweight', 0),
+      ex('Goblet Squat', 4, '8–12', '1 DB at chest', 1),
+      ex('DB Romanian Deadlift', 4, '10–12', 'DB each hand', 1),
+      ex('DB Walking Lunge', 3, '12 / leg', 'DB each hand', 2),
+      ex('DB Bench Glute Bridge / Hip Thrust', 3, '12–15', 'shoulders on bench, DB on hips', 2),
+      ex('DB Calf Raise', 3, '15–20', 'DB each hand', 2),
+      ex('Deadbug', 2, '20', 'bodyweight', 3),
+      ex('Plank', 2, '30–45s', 'bodyweight', 3, 'time'),
+    ]},
+    { id: uid(), program:'Lime Gardens', name:'Day 2 — Upper Body', exercises:[
+      ex('DB Shoulder Rotation (light)', 2, '10', '2.5–5 kg', 0),
+      ex('Band-free Scap Push-Up', 2, '10', 'bodyweight', 0),
+      ex('DB Floor / Bench Press (light)', 2, '10', 'warm-up weight', 0),
+      ex('DB Bench Press', 4, '8–12', 'flat bench', 1),
+      ex('DB One-Arm Row (knee on bench)', 4, '10–12 / side', 'heavy', 1),
+      ex('DB Overhead Shoulder Press', 3, '10–12', 'seated on bench', 2),
+      ex('DB Incline Bench Press', 3, '10–12', 'bench at incline', 2),
+      ex('DB Bent-Over Reverse Fly', 3, '12–15', 'light, rear delts', 2),
+      ex('DB Bicep Curl', 2, '12', 'DB each hand', 3),
+      ex('DB Overhead Tricep Extension', 2, '12', 'one DB, both hands', 3),
+    ]},
+    { id: uid(), program:'Lime Gardens', name:'Day 3 — Full Body', exercises:[
+      ex('Glute Bridge', 2, '15', 'bodyweight', 0),
+      ex('DB RDL (light)', 2, '10', 'warm-up weight', 0),
+      ex('Deadbug', 2, '20', 'bodyweight', 0),
+      ex('DB Deadlift', 4, '8–12', 'DB each hand', 1),
+      ex('DB Bench Press (push-up alt)', 3, '10–12', 'flat bench', 1),
+      ex('DB Bulgarian Split Squat', 3, '10 / leg', 'rear foot on bench', 1),
+      ex('DB Renegade Row', 3, '8–10 / side', 'plank on DBs', 1),
+      ex('DB Farmer Carry', 3, '30–40s', 'heavy, walk', 2, 'time'),
+      ex('DB Russian Twist', 3, '20', 'one DB, seated', 2),
+    ]},
+  ];
+}
+function completeGymWorkouts(){
+  return [
+    { id: uid(), program:'Complete Gym', name:'Day 1 — Deadlift', exercises:[
+      ex('Scapular Pull-Up', 2, '10', 'bodyweight', 0),
+      ex('Romanian Deadlift (light)', 2, '10', '20 kg', 0),
+      ex('Semi-Kneeling Windmill', 2, '6 / side', '5 kg', 0),
+      ex('Deadbug', 2, '50', 'bodyweight', 0),
+      ex('Deadlift', 3, '8–12', '40 kg', 1),
+      ex('Wide-Grip Push-Up', 3, '8–12', 'bodyweight', 1),
+      ex('Dumbbell Walking Lunges', 3, '14–20', '5 kg / hand', 1),
+      ex('Supinated (underhand) Pull-Up', 3, '6–10', 'assisted if needed', 1),
+      ex('Single-Leg Hop', 3, '20 / leg', 'bodyweight', 2),
+      ex('Band Tricep Extension', 3, '30', 'band', 2),
+    ]},
+    { id: uid(), program:'Complete Gym', name:'Day 2 — Squat', exercises:[
+      ex('Jefferson Curl', 2, '10', '3 kg', 0),
+      ex('Split Squat (bodyweight)', 2, '10 / leg', 'bodyweight', 0),
+      ex('Twisted Bear Squat', 2, '10', 'bodyweight', 0),
+      ex('Air Squat', 2, '10', 'bodyweight', 0),
+      ex('Goblet Squat', 5, '8', '15 kg', 1),
+      ex('Frog Jumps', 5, '10', 'bodyweight', 1),
+      ex('Cable Lat Pulldown', 3, '8–12', '27.5 kg', 2),
+      ex('High-Step Hip Ext. Iso + Single-Arm Press', 3, '6–10 / side', '7.5 kg', 2),
+      ex('V-Up', 2, '15', 'bodyweight', 3),
+      ex('Spiderman Push-Up', 2, '10', 'bodyweight', 3),
+    ]},
+    { id: uid(), program:'Complete Gym', name:'Day 3 — Bench', exercises:[
+      ex('Psoas Crunch', 2, '8', 'bodyweight', 0),
+      ex('Barbell Bench Press (light)', 2, '10', '20 kg', 0),
+      ex('Knee-Supported DB Shoulder Rotation', 2, '8–12', '2.5–5 kg', 0),
+      ex('Cossack Squat', 2, '6 / side', 'bodyweight', 0),
+      ex('Barbell Bench Press', 4, '8–12', '25 kg', 1),
+      ex('Renegade Row', 4, '10–18', '5 kg / hand', 1),
+      ex('Barbell Hip Thrust', 3, '8–12', '80 kg', 2),
+      ex('Single-Arm Split-Stance KB Swing', 3, '8 / side', '8 kg', 2),
+      ex('Dumbbell Overhead Press', 3, '10–15', '5–7.5 kg', 2),
+    ]},
+  ];
 }
 const SEED = {
-  workouts: [
-    {
-      id: uid(), name: 'Day 1 — Deadlift',
-      exercises: [
-        ex('Scapular Pull-Up', 2, '10', 'bodyweight', 0),
-        ex('Romanian Deadlift (light)', 2, '10', '20 kg', 0),
-        ex('Semi-Kneeling Windmill', 2, '6 / side', '5 kg', 0),
-        ex('Deadbug', 2, '50', 'bodyweight', 0),
-        ex('Deadlift', 3, '8–12', '40 kg', 1),
-        ex('Wide-Grip Push-Up', 3, '8–12', 'bodyweight', 1),
-        ex('Dumbbell Walking Lunges', 3, '14–20', '5 kg / hand', 1),
-        ex('Supinated (underhand) Pull-Up', 3, '6–10', 'assisted if needed', 1),
-        ex('Single-Leg Hop', 3, '20 / leg', 'bodyweight', 2),
-        ex('Band Tricep Extension', 3, '30', 'band', 2),
-      ]
-    },
-    {
-      id: uid(), name: 'Day 2 — Squat',
-      exercises: [
-        ex('Jefferson Curl', 2, '10', '3 kg', 0),
-        ex('Split Squat (bodyweight)', 2, '10 / leg', 'bodyweight', 0),
-        ex('Twisted Bear Squat', 2, '10', 'bodyweight', 0),
-        ex('Air Squat', 2, '10', 'bodyweight', 0),
-        ex('Goblet Squat', 5, '8', '15 kg', 1),
-        ex('Frog Jumps', 5, '10', 'bodyweight', 1),
-        ex('Cable Lat Pulldown', 3, '8–12', '27.5 kg', 2),
-        ex('High-Step Hip Ext. Iso + Single-Arm Press', 3, '6–10 / side', '7.5 kg', 2),
-        ex('V-Up', 2, '15', 'bodyweight', 3),
-        ex('Spiderman Push-Up', 2, '10', 'bodyweight', 3),
-      ]
-    },
-    {
-      id: uid(), name: 'Day 3 — Bench',
-      exercises: [
-        ex('Psoas Crunch', 2, '8', 'bodyweight', 0),
-        ex('Barbell Bench Press (light)', 2, '10', '20 kg', 0),
-        ex('Knee-Supported DB Shoulder Rotation', 2, '8–12', '2.5–5 kg', 0),
-        ex('Cossack Squat', 2, '6 / side', 'bodyweight', 0),
-        ex('Barbell Bench Press', 4, '8–12', '25 kg', 1),
-        ex('Renegade Row', 4, '10–18', '5 kg / hand', 1),
-        ex('Barbell Hip Thrust', 3, '8–12', '80 kg', 2),
-        ex('Single-Arm Split-Stance KB Swing', 3, '8 / side', '8 kg', 2),
-        ex('Dumbbell Overhead Press', 3, '10–15', '5–7.5 kg', 2),
-      ]
-    }
-  ],
+  workouts: [ ...limeGardensWorkouts(), ...completeGymWorkouts() ],
   sessions: [],   // completed logs
   drafts: {},     // in-progress log per workoutId
   settings: { restDefault: 90 }
@@ -270,12 +315,19 @@ function load(){
   let d = null;
   try{ const s = JSON.parse(localStorage.getItem(KEY)); if(s && s.workouts) d = s; }catch(e){}
   if(!d) d = structuredClone(SEED);
+  // existing (pre-programs) workouts belong to Complete Gym
+  d.workouts.forEach(w=>{ if(!w.program) w.program = 'Complete Gym'; });
+  // add the Lime Gardens program to installs that predate it (kept above Complete Gym)
+  if(!d.workouts.some(w=>w.program==='Lime Gardens')){
+    d.workouts = [ ...limeGardensWorkouts(), ...d.workouts ];
+  }
   // backfill curated videos into empty slots (won't overwrite user-pinned links)
   d.workouts.forEach(w=>w.exercises.forEach(e=>{ if(!e.videoUrl && VIDEOS[e.name]) e.videoUrl = VIDEOS[e.name]; }));
   return d;
 }
 function save(){ localStorage.setItem(KEY, JSON.stringify(DB)); }
 let DB = load();
+save();   // persist any migration immediately
 
 /* find workout / exercise */
 const findW = id => DB.workouts.find(w=>w.id===id);
@@ -376,22 +428,29 @@ function chartCard(){
     <div class="chart-x">${xl}</div>
   </div>`;
 }
+function dayCard(w){
+  const last = lastSessionDate(w.id);
+  const clock = `<svg class="clk" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>`;
+  const lastLine = last ? `<p class="last-done">${clock}${relDay(last)}</p>` : '';
+  return `<div class="wcard">
+    <div class="body" onclick="confirmStart('${w.id}')">
+      <p class="name">${wEmoji(w)} ${esc(w.name)}</p>
+      <p class="meta">${w.exercises.length} exercise${w.exercises.length!==1?'s':''}</p>
+      ${lastLine}
+    </div>
+    <button class="pill menu" onclick="event.stopPropagation();workoutMenu('${w.id}')">•••</button>
+    <div class="chev" onclick="confirmStart('${w.id}')">›</div>
+  </div>`;
+}
 function renderHome(){
-  let cards = DB.workouts.map(w=>{
-    const last = lastSessionDate(w.id);
-    const clock = `<svg class="clk" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>`;
-    const lastLine = last ? `<p class="last-done">${clock}${relDay(last)}</p>` : '';
-    return `<div class="wcard">
-      <div class="body" onclick="confirmStart('${w.id}')">
-        <p class="name">${WORKOUT_EMOJIS[DB.workouts.indexOf(w)%WORKOUT_EMOJIS.length]} ${esc(w.name)}</p>
-        <p class="meta">${w.exercises.length} exercise${w.exercises.length!==1?'s':''}</p>
-        ${lastLine}
-      </div>
-      <button class="pill menu" onclick="event.stopPropagation();workoutMenu('${w.id}')">•••</button>
-      <div class="chev" onclick="confirmStart('${w.id}')">›</div>
-    </div>`;
-  }).join('');
-  if(!DB.workouts.length) cards = `<div class="center-empty">No workouts yet.<br>Tap “New Workout” to start.</div>`;
+  // group workouts by program, preserving first-appearance order
+  const order=[], groups={};
+  DB.workouts.forEach(w=>{ const p=wProgram(w); if(!(p in groups)){ groups[p]=[]; order.push(p); } groups[p].push(w); });
+  let body = order.map(p=>`<div class="prog-group">
+      <h2 class="prog-title">${esc(p)}</h2>
+      ${groups[p].map(dayCard).join('')}
+    </div>`).join('');
+  if(!DB.workouts.length) body = `<div class="center-empty">No workouts yet.</div>`;
 
   app.innerHTML = `
     <div class="topbar">
@@ -400,7 +459,7 @@ function renderHome(){
     </div>
     <div class="screen">
       ${chartCard()}
-      ${cards}
+      ${body}
     </div>`;
 }
 
@@ -871,6 +930,7 @@ function exportData(){
     exportedAt: new Date().toISOString(),
     // human / AI friendly view
     program: DB.workouts.map(w=>({
+      block: wProgram(w),
       workout: w.name,
       exercises: w.exercises.map(e=>({
         name:e.name, type:e.type, sets:e.targetSets, targetReps:e.targetReps,
