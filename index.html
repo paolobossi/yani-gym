@@ -30,9 +30,9 @@
     backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
     padding:calc(env(safe-area-inset-top) + 10px) 16px 10px;
     display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--line);}
-  .topbar h1{font-size:20px;margin:0;font-weight:800;letter-spacing:-.3px;flex:1;}
-  .elapsed{font-size:15px;color:var(--accent);font-variant-numeric:tabular-nums;font-weight:800;
-    flex:0 0 auto;background:var(--accent-d);padding:6px 10px;border-radius:9px;}
+  .topbar h1{font-size:17px;margin:0;font-weight:800;letter-spacing:-.3px;flex:1;}
+  .elapsed{font-size:15px;color:var(--txt);font-variant-numeric:tabular-nums;font-weight:800;
+    flex:0 0 auto;background:var(--panel-2);padding:6px 10px;border-radius:9px;}
   .modal-sub{color:var(--muted);margin:-6px 0 16px;font-size:14px;}
   .iconbtn{width:40px;height:40px;border-radius:11px;background:var(--panel-2);
     display:flex;align-items:center;justify-content:center;font-size:18px;flex:0 0 auto;}
@@ -44,6 +44,9 @@
   .btn.sm{padding:7px 12px;font-size:13px;border-radius:9px;}
 
   .screen{padding:16px 14px 120px;}
+  .screen.home{padding-top:calc(env(safe-area-inset-top) + 20px);}
+  .home-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:20px;}
+  .welcome{flex:1;margin:0;font-size:31px;line-height:1.12;font-weight:800;letter-spacing:-.6px;}
   .muted{color:var(--muted);}
   .center-empty{text-align:center;color:var(--muted);padding:60px 20px;}
 
@@ -54,20 +57,21 @@
 
   /* Workout list cards */
   .wcard{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
-    padding:16px;margin-bottom:12px;display:flex;align-items:center;gap:14px;}
+    padding:16px;margin-bottom:12px;display:flex;align-items:center;gap:14px;position:relative;}
   .wcard .body{flex:1;min-width:0;}
-  .wcard .name{font-size:18px;font-weight:700;margin:0 0 3px;}
+  .name-row{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin:0 0 3px;}
+  .wcard .name{font-size:18px;font-weight:700;margin:0;flex:1;min-width:0;}
   .wcard .meta{font-size:13px;color:var(--muted);}
-  .last-tag{display:inline-block;background:var(--accent);color:#04220f;font-size:11px;font-weight:800;
-    padding:3px 8px;border-radius:7px;margin-left:4px;vertical-align:middle;letter-spacing:.4px;text-transform:uppercase;}
+  .last-tag{position:absolute;top:12px;right:14px;background:var(--accent);color:#04220f;font-size:10px;
+    font-weight:800;padding:3px 8px;border-radius:7px;letter-spacing:.4px;text-transform:uppercase;white-space:nowrap;}
   .last-done{font-size:13px;color:var(--muted);margin:5px 0 0;display:flex;align-items:center;gap:5px;}
   .clk{width:13px;height:13px;flex:0 0 auto;}
 
   /* Workouts-per-week chart */
   .chart-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
-    padding:16px 16px 10px;margin-bottom:16px;}
-  .chart-title{font-size:17px;font-weight:700;margin:0 0 16px;}
-  .plot{position:relative;height:168px;}
+    padding:16px 16px 10px;margin-bottom:30px;}
+  .chart-title{font-size:17px;font-weight:700;margin:0 0 12px;}
+  .plot{position:relative;height:88px;}
   .plot .gl{position:absolute;left:0;right:28px;height:0;border-top:1px solid var(--line);}
   .plot .gl.target{border-top-color:#a855f7;opacity:.55;}
   .plot .yl{position:absolute;right:0;transform:translateY(-50%);font-size:13px;color:var(--muted);font-weight:600;}
@@ -100,17 +104,19 @@
 
   table.sets{width:100%;border-collapse:collapse;margin-top:4px;}
   table.sets th{font-size:12px;color:var(--muted);font-weight:600;text-align:center;
-    padding:8px 4px;text-transform:none;}
+    padding:8px 4px;text-transform:none;vertical-align:middle;}
   table.sets th.set-c,table.sets td.set-c{width:44px;}
-  table.sets th.prev-c{text-align:left;padding-left:14px;}
+  table.sets th.prev-c{text-align:center;}
   table.sets th .tgt{display:block;font-size:12px;color:var(--muted);font-weight:700;margin-top:2px;white-space:nowrap;}
-  table.sets td{padding:5px 4px;text-align:center;}
+  table.sets td{padding:5px 4px;text-align:center;vertical-align:middle;}
   table.sets tr.done td{background:var(--accent-d);}
   .setnum{width:34px;height:32px;border-radius:8px;background:var(--panel-2);
     display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;}
   tr.done .setnum{background:#1c4028;}
-  .prev{font-size:13px;color:var(--muted);text-align:left;padding-left:14px !important;white-space:nowrap;}
+  .prev{font-size:13px;color:var(--muted);text-align:center;white-space:nowrap;}
   .prev.has{color:#c9d2de;}
+  .cell-dash{width:70px;max-width:78px;height:38px;display:inline-flex;align-items:center;
+    justify-content:center;color:var(--muted);font-weight:700;font-size:16px;}
   .cell-in{width:70px;max-width:78px;height:38px;border-radius:9px;border:1px solid var(--line);
     background:var(--panel-2);color:var(--txt);text-align:center;font-size:16px;font-weight:600;
     padding:0 4px;}
@@ -127,9 +133,12 @@
   .rest-line::before{content:'';position:absolute;left:0;right:0;top:50%;height:2px;
     background:#173154;border-radius:2px;}
   .rest-line span{position:relative;background:var(--panel);padding:0 12px;color:var(--blue);
-    font-weight:700;font-size:14px;font-variant-numeric:tabular-nums;}
-  .rest-bar{background:var(--blue);color:#fff;text-align:center;font-weight:800;font-size:16px;
-    padding:11px 0;border-radius:9px;font-variant-numeric:tabular-nums;cursor:pointer;}
+    font-weight:700;font-size:15px;font-variant-numeric:tabular-nums;}
+  .rest-bar{position:relative;overflow:hidden;background:#10233b;text-align:center;font-weight:800;
+    font-size:15px;padding:11px 0;border-radius:9px;cursor:pointer;}
+  .rest-fill{position:absolute;left:0;top:0;bottom:0;width:100%;background:var(--blue);
+    transition:width 1s linear;}
+  .rest-bar-time{position:relative;z-index:1;color:#fff;font-variant-numeric:tabular-nums;}
 
   .add-ex-row{display:flex;gap:10px;margin-top:6px;}
   .add-ex-row .btn{flex:1;}
@@ -205,9 +214,12 @@ const GROUP_LETTERS = ['A','B','C','D','E','F'];
 const WORKOUT_EMOJIS = ['🏋️','🦵','💪','🔥','🚴','🤸','🧘','⚡'];
 function wProgram(w){ return w.program || 'Complete Gym'; }
 function wEmoji(w){
-  const same = DB.workouts.filter(x=>wProgram(x)===wProgram(w));
-  const i = same.indexOf(w);
-  return WORKOUT_EMOJIS[(i<0?0:i)%WORKOUT_EMOJIS.length];
+  const n = (w.name||'').toLowerCase();
+  if(/lower|squat|\bleg/.test(n)) return '🦵';
+  if(/upper|bench|press|push|chest|arm/.test(n)) return '💪';
+  if(/full/.test(n)) return '🔥';
+  if(/deadlift|hinge|pull|back/.test(n)) return '🏋️';
+  return '🏋️';
 }
 
 // Curated video links keyed by exercise name. Backfilled into empty slots on load,
@@ -441,8 +453,9 @@ function dayCard(w){
   const lastLine = last ? `<p class="last-done">${clock}${relDay(last)}</p>` : '';
   const tag = w.id===lastSessionWorkoutId() ? `<span class="last-tag">Last session</span>` : '';
   return `<div class="wcard">
+    ${tag}
     <div class="body" onclick="confirmStart('${w.id}')">
-      <p class="name">${wEmoji(w)} ${esc(w.name)} ${tag}</p>
+      <div class="name-row"><span class="name">${wEmoji(w)} ${esc(w.name)}</span></div>
       <p class="meta">${w.exercises.length} exercise${w.exercises.length!==1?'s':''}</p>
       ${lastLine}
     </div>
@@ -461,11 +474,11 @@ function renderHome(){
   if(!DB.workouts.length) body = `<div class="center-empty">No workouts yet.</div>`;
 
   app.innerHTML = `
-    <div class="topbar">
-      <h1>Yani Gym</h1>
-      <button class="iconbtn" onclick="dataMenu()" title="Data">⤓</button>
-    </div>
-    <div class="screen">
+    <div class="screen home">
+      <div class="home-top">
+        <h1 class="welcome">Let's go, Ayanna,<br>you've got this!</h1>
+        <button class="iconbtn" onclick="dataMenu()" title="Data">⤓</button>
+      </div>
       ${chartCard()}
       ${body}
     </div>`;
@@ -519,9 +532,10 @@ function renderWorkout(){
       : `<th class="set-c">Set</th><th class="prev-c">Previous</th><th>kg</th><th>Reps${tgt}</th><th>✓</th>`;
 
     const colspan = isTime ? 4 : 5;
+    const bw = isBW(ex);
     const body = rows.map((r,i)=>{
       const p = prev && prev[i];
-      const prevTxt = p ? (isTime ? fmtTime(p.time) : `${p.kg||0} × ${p.reps||0}`) : '–';
+      const prevTxt = p ? (isTime ? fmtTime(p.time) : (bw ? `${p.reps||0} reps` : `${p.kg||0} × ${p.reps||0}`)) : '–';
       const doneCls = r.done?'done':'';
       let setTr;
       if(isTime){
@@ -533,11 +547,14 @@ function renderWorkout(){
           <td><button class="check" onclick="toggleDone('${w.id}','${ex.id}',${i})">✓</button></td>
         </tr>`;
       } else {
+        const kgCell = bw
+          ? `<td><div class="cell-dash">–</div></td>`
+          : `<td><input class="cell-in" inputmode="decimal" placeholder="${p?(p.kg||0):''}" value="${r.kg}"
+               onchange="setVal('${w.id}','${ex.id}',${i},'kg',this.value)"></td>`;
         setTr = `<tr class="${doneCls}">
           <td class="set-c"><span class="setnum">${i+1}</span></td>
           <td class="prev ${p?'has':''}">${prevTxt}</td>
-          <td><input class="cell-in" inputmode="decimal" placeholder="${p?(p.kg||0):''}" value="${r.kg}"
-               onchange="setVal('${w.id}','${ex.id}',${i},'kg',this.value)"></td>
+          ${kgCell}
           <td><input class="cell-in" inputmode="numeric" placeholder="${p?(p.reps||0):''}" value="${r.reps}"
                onchange="setVal('${w.id}','${ex.id}',${i},'reps',this.value)"></td>
           <td><button class="check" onclick="toggleDone('${w.id}','${ex.id}',${i})">✓</button></td>
@@ -558,7 +575,6 @@ function renderWorkout(){
     <div class="topbar">
       <button class="iconbtn" onclick="confirmExit('${w.id}')">‹</button>
       <h1>${wEmoji(w)} ${esc(w.name)}</h1>
-      ${(activeWorkout&&activeWorkout.id===w.id)?`<span class="elapsed" id="elapsed">0:00</span>`:''}
     </div>
     <div class="screen">
       ${blocks || '<div class="center-empty">No exercises yet.</div>'}
@@ -568,7 +584,6 @@ function renderWorkout(){
       <button class="btn primary finish-btn" onclick="confirmExit('${w.id}')">Finish Workout</button>
     </div>`;
   updateRestFab();
-  if(activeWorkout && activeWorkout.id===w.id){ tickElapsed(); workoutTimer=setInterval(tickElapsed,1000); }
 }
 
 function planLine(ex){
@@ -578,10 +593,15 @@ function planLine(ex){
   return `<p class="plan">${sets}${note}</p>`;
 }
 function exRest(ex){ return (ex && ex.rest!=null) ? ex.rest : (DB.settings.restDefault||90); }
+function isBW(ex){ return /bodyweight/i.test(ex.note||''); }
+function restPct(){ return rest.total ? Math.max(0,Math.min(100, rest.remaining/rest.total*100)) : 0; }
 function restRow(ex,i,colspan){
   const active = rest.running && rest.anchor && rest.anchor.exId===ex.id && rest.anchor.setIdx===i;
   const inner = active
-    ? `<div class="rest-bar" id="restbar" onclick="openRest()">${fmtTime(rest.remaining)}</div>`
+    ? `<div class="rest-bar" id="restbar" onclick="openRest()">
+         <div class="rest-fill" id="restfill" style="width:${restPct()}%"></div>
+         <span class="rest-bar-time">${fmtTime(rest.remaining)}</span>
+       </div>`
     : `<div class="rest-line" onclick="editRest('${ex.id}')"><span>${fmtTime(exRest(ex))}</span></div>`;
   return `<tr class="rest-tr"><td colspan="${colspan}">${inner}</td></tr>`;
 }
@@ -702,7 +722,8 @@ function setRestPreset(sec){
 }
 /* update every live display: inline bar, floating fab, overlay */
 function updateRestDisplays(){
-  const bar=document.getElementById('restbar'); if(bar) bar.textContent=fmtTime(rest.remaining);
+  const bt=document.querySelector('#restbar .rest-bar-time'); if(bt) bt.textContent=fmtTime(rest.remaining);
+  const fill=document.getElementById('restfill'); if(fill) fill.style.width=restPct()+'%';
   updateRestFab();
   const t=document.getElementById('restTime');
   if(t){ t.textContent=fmtTime(rest.remaining); t.classList.toggle('warn',rest.remaining<=10); }
