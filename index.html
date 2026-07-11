@@ -46,6 +46,10 @@
   .screen{padding:16px 14px 120px;}
   .screen.home{padding-top:calc(env(safe-area-inset-top) + 20px);}
   .home-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:20px;}
+  .home-actions{display:flex;gap:8px;flex:0 0 auto;}
+  .iconbtn.sync-synced{background:var(--accent-d);}
+  .iconbtn.sync-offline{background:#3a2e12;}
+  .iconbtn.sync-off{opacity:.55;}
   .welcome{flex:1;margin:0;font-size:31px;line-height:1.12;font-weight:800;letter-spacing:-.6px;}
   .muted{color:var(--muted);}
   .center-empty{text-align:center;color:var(--muted);padding:60px 20px;}
@@ -156,8 +160,13 @@
     align-items:center;justify-content:center;gap:20px;padding:20px 8px;}
   .vid-title{font-size:16px;font-weight:700;color:#fff;text-align:center;max-width:100%;
     overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  .vid-frame{width:100%;}
-  .vid-frame iframe{width:100%;aspect-ratio:16/9;border:0;border-radius:10px;}
+  .vid-frame{width:100%;position:relative;aspect-ratio:16/9;}
+  .vid-frame iframe{position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:10px;}
+  .vid-skel{position:absolute;inset:0;border-radius:10px;background:#1a1d22;overflow:hidden;}
+  .vid-skel::after{content:'';position:absolute;inset:0;transform:translateX(-100%);
+    background:linear-gradient(90deg,transparent,rgba(255,255,255,.09),transparent);
+    animation:shimmer 1.3s infinite;}
+  @keyframes shimmer{100%{transform:translateX(100%);}}
   .vid-close{background:rgba(255,255,255,.16);color:#fff;font-weight:800;font-size:17px;padding:15px 46px;
     border-radius:14px;border:1px solid rgba(255,255,255,.28);}
 
@@ -219,6 +228,10 @@
 <script>
 /* ===================== Data layer ===================== */
 const KEY = 'yaniGym.v2';
+/* Cloud sync config — set these to your Supabase project to enable sync.
+   Left blank => app runs local-only (no cloud). */
+const SB_URL = '';   // e.g. https://xxxx.supabase.co
+const SB_KEY = '';   // anon / publishable key
 const GROUP_VARS = ['--g0','--g1','--g2','--g3','--g4','--g5'];
 const GROUP_LETTERS = ['A','B','C','D','E','F'];
 const WORKOUT_EMOJIS = ['🏋️','🦵','💪','🔥','🚴','🤸','🧘','⚡'];
@@ -339,10 +352,8 @@ const SEED = {
 };
 
 function uid(){ return 'x'+Math.random().toString(36).slice(2,9); }
-function load(){
-  let d = null;
-  try{ const s = JSON.parse(localStorage.getItem(KEY)); if(s && s.workouts) d = s; }catch(e){}
-  if(!d) d = structuredClone(SEED);
+function migrate(d){
+  d.workouts = d.workouts || [];
   // existing (pre-programs) workouts belong to Complete Gym
   d.workouts.forEach(w=>{ if(!w.program) w.program = 'Complete Gym'; });
   // add the Lime Gardens program to installs that predate it (kept above Complete Gym)
@@ -351,11 +362,133 @@ function load(){
   }
   // backfill curated videos into empty slots (won't overwrite user-pinned links)
   d.workouts.forEach(w=>w.exercises.forEach(e=>{ if(!e.videoUrl && VIDEOS[e.name]) e.videoUrl = VIDEOS[e.name]; }));
+  d.sessions = d.sessions || []; d.drafts = d.drafts || {}; d.settings = d.settings || { restDefault:90 };
   return d;
 }
-function save(){ localStorage.setItem(KEY, JSON.stringify(DB)); }
+function load(){
+  let d = null;
+  try{ const s = JSON.parse(localStorage.getItem(KEY)); if(s && s.workouts) d = s; }catch(e){}
+  if(!d) d = structuredClone(SEED);
+  return migrate(d);
+}
+function save(fromRemote){ localStorage.setItem(KEY, JSON.stringify(DB)); if(!fromRemote) markDirty(); }
 let DB = load();
-save();   // persist any migration immediately
+
+/* ===================== Cloud sync (optional, offline-first) ===================== */
+let sbCode = localStorage.getItem('yaniGym.syncCode') || '';
+let lastServerTs = localStorage.getItem('yaniGym.serverTs') || '';
+let dirty = localStorage.getItem('yaniGym.dirty') === '1';
+let syncStatus = 'off';
+let pushTimer = null, pullTimer = null;
+
+function syncConfigured(){ return !!(SB_URL && SB_KEY); }
+function syncOn(){ return !!(syncConfigured() && sbCode); }
+async function sbRpc(fn, args){
+  const r = await fetch(SB_URL + '/rest/v1/rpc/' + fn, {
+    method:'POST',
+    headers:{ 'apikey':SB_KEY, 'Authorization':'Bearer '+SB_KEY, 'Content-Type':'application/json' },
+    body: JSON.stringify(args)
+  });
+  if(!r.ok) throw new Error(fn+' '+r.status);
+  return r.json();
+}
+function markDirty(){ dirty=true; try{localStorage.setItem('yaniGym.dirty','1');}catch(e){} schedulePush(); }
+function schedulePush(){ if(!syncOn()) return; clearTimeout(pushTimer); pushTimer=setTimeout(pushRemote,1500); }
+function setSyncStatus(s){ syncStatus=s; const b=document.getElementById('syncBtn'); if(b) b.className='iconbtn sync-'+s; }
+async function pushRemote(){
+  if(!syncOn() || !dirty) return;
+  try{
+    setSyncStatus('syncing');
+    const ts = await sbRpc('yani_set', { p_profile:sbCode, p_data:DB });
+    lastServerTs = (typeof ts==='string') ? ts : (ts && ts.updated_at) || lastServerTs;
+    localStorage.setItem('yaniGym.serverTs', lastServerTs);
+    dirty=false; localStorage.setItem('yaniGym.dirty','0');
+    setSyncStatus('synced');
+  }catch(e){ setSyncStatus('offline'); }
+}
+async function pullRemote(){
+  if(!syncOn()) return;
+  try{
+    const rows = await sbRpc('yani_get', { p_profile:sbCode });
+    const row = Array.isArray(rows) ? rows[0] : rows;
+    if(!row){ if(dirty) await pushRemote(); setSyncStatus('synced'); return; }
+    if(row.updated_at !== lastServerTs){
+      if(dirty){ await pushRemote(); }             // local unpushed edits win
+      else {                                        // remote changed elsewhere -> adopt
+        DB = migrate(row.data); save(true);
+        lastServerTs = row.updated_at; localStorage.setItem('yaniGym.serverTs', row.updated_at);
+        if(!document.getElementById('modalBg') && !document.getElementById('videoOverlay')) render();
+      }
+    }
+    setSyncStatus('synced');
+  }catch(e){ setSyncStatus('offline'); }
+}
+function startSyncLoops(){
+  clearInterval(pullTimer);
+  if(!syncOn()){ setSyncStatus('off'); return; }
+  if(dirty) schedulePush();
+  pullRemote();
+  pullTimer = setInterval(pullRemote, 25000);
+}
+function syncLabel(){
+  return ({off:'Off', synced:'✓ Synced to cloud', syncing:'Syncing…',
+    offline:'Offline — changes sync when back online'})[syncStatus] || 'Connected';
+}
+function suggestCode(){ return sbCode || ('yani-' + Math.random().toString(36).slice(2,8)); }
+function syncMenu(){
+  if(!syncConfigured()){
+    modal(`<h3>Cloud sync</h3><p class="modal-sub">Not enabled in this version yet.</p>
+      <div class="modal-actions"><button class="btn" onclick="closeModal()">OK</button></div>`); return;
+  }
+  if(syncOn()){
+    modal(`<h3>Cloud sync</h3>
+      <p class="modal-sub">${syncLabel()}</p>
+      <div class="field"><label>Your sync code — enter this on another device to see the same data</label>
+        <input id="syncCodeIn" value="${esc(sbCode)}" readonly onclick="this.select()"></div>
+      <div class="modal-actions">
+        <button class="btn blue" onclick="copySync()">Copy code</button>
+        <button class="btn" onclick="changeSyncCode()">Change</button>
+      </div>
+      <div class="modal-actions"><button class="btn danger" onclick="disconnectSync()">Turn off sync</button></div>`);
+  } else {
+    modal(`<h3>Set up cloud sync</h3>
+      <p class="modal-sub">Back up your data and view it on your other devices. Use the same code on another device to share the same data. A fresh random code keeps it private.</p>
+      <div class="field"><label>Sync code</label><input id="newCode" value="${esc(suggestCode())}"></div>
+      <div class="modal-actions">
+        <button class="btn" onclick="closeModal()">Cancel</button>
+        <button class="btn primary" onclick="connectSync()">Connect</button>
+      </div>`);
+  }
+}
+async function connectSync(){
+  const code = (val('newCode')||'').trim(); if(!code) return;
+  sbCode = code; localStorage.setItem('yaniGym.syncCode', code);
+  lastServerTs=''; localStorage.setItem('yaniGym.serverTs','');
+  closeModal(); setSyncStatus('syncing');
+  try{
+    const rows = await sbRpc('yani_get', { p_profile:code });
+    const row = Array.isArray(rows) ? rows[0] : rows;
+    if(row && row.data){
+      const localHas = DB.sessions && DB.sessions.length;
+      if(localHas && !confirm("This code already has data in the cloud. Load it and replace this device's data?")){
+        dirty=true; localStorage.setItem('yaniGym.dirty','1'); await pushRemote();   // keep local, overwrite cloud
+      } else {
+        DB = migrate(row.data); save(true);
+        lastServerTs=row.updated_at; localStorage.setItem('yaniGym.serverTs', row.updated_at);
+        dirty=false; localStorage.setItem('yaniGym.dirty','0');
+      }
+    } else {
+      dirty=true; localStorage.setItem('yaniGym.dirty','1'); await pushRemote();     // first upload
+    }
+    render(); startSyncLoops(); toast('☁️ Cloud sync on');
+  }catch(e){ setSyncStatus('offline'); toast('Could not reach cloud'); }
+}
+function disconnectSync(){
+  sbCode=''; localStorage.removeItem('yaniGym.syncCode');
+  clearInterval(pullTimer); setSyncStatus('off'); closeModal(); renderHome(); toast('Cloud sync off');
+}
+function changeSyncCode(){ sbCode=''; localStorage.removeItem('yaniGym.syncCode'); clearInterval(pullTimer); syncMenu(); }
+function copySync(){ try{ navigator.clipboard.writeText(sbCode); toast('Code copied'); }catch(e){} }
 
 /* find workout / exercise */
 const findW = id => DB.workouts.find(w=>w.id===id);
@@ -487,7 +620,10 @@ function renderHome(){
     <div class="screen home">
       <div class="home-top">
         <h1 class="welcome">Let's go, Ayanna,<br>you've got this!</h1>
-        <button class="iconbtn" onclick="dataMenu()" title="Data">⤓</button>
+        <div class="home-actions">
+          ${syncConfigured()?`<button class="iconbtn sync-${syncStatus}" id="syncBtn" onclick="syncMenu()" title="Cloud sync">☁️</button>`:''}
+          <button class="iconbtn" onclick="dataMenu()" title="Data">⤓</button>
+        </div>
       </div>
       ${chartCard()}
       ${body}
@@ -642,8 +778,10 @@ function showVideoOverlay(id, name){
   o.innerHTML = `
     <div class="vid-title">${esc(name||'')}</div>
     <div class="vid-frame">
+      <div class="vid-skel" id="vidSkel"></div>
       <iframe src="https://www.youtube.com/embed/${id}?autoplay=1&playsinline=1&rel=0&modestbranding=1"
-        allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen></iframe>
+        allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen
+        onload="var s=document.getElementById('vidSkel'); if(s) s.remove();"></iframe>
     </div>
     <button class="vid-close" onclick="closeVideo()">✕ Close</button>`;
   document.body.appendChild(o);
@@ -979,7 +1117,9 @@ function delWorkout(wid){
 /* ===================== Data export / import ===================== */
 function dataMenu(){
   const n = DB.sessions.length;
+  const cloud = syncConfigured() ? `<button onclick="syncMenu()">☁️  Cloud sync — ${syncOn()?'on':'off'}</button>` : '';
   modal(`<div class="menu-sheet">
+    ${cloud}
     <button onclick="exportData()">⬇️  Export data (.json) — ${n} logged session${n!==1?'s':''}</button>
     <button onclick="importData()">⬆️  Import data (restore backup)</button>
   </div>`);
@@ -1066,6 +1206,11 @@ document.addEventListener('contextmenu',e=>{
 });
 
 render();
+
+/* cloud sync: initial pull + keep in sync on focus / reconnect */
+startSyncLoops();
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden) pullRemote(); });
+window.addEventListener('online',()=>{ pushRemote(); pullRemote(); });
 </script>
 </body>
 </html>
