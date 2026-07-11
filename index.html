@@ -167,8 +167,13 @@
     background:linear-gradient(90deg,transparent,rgba(255,255,255,.09),transparent);
     animation:shimmer 1.3s infinite;}
   @keyframes shimmer{100%{transform:translateX(100%);}}
-  .vid-close{background:rgba(255,255,255,.16);color:#fff;font-weight:800;font-size:17px;padding:15px 46px;
-    border-radius:14px;border:1px solid rgba(255,255,255,.28);}
+  .vid-actions{display:flex;gap:12px;width:100%;justify-content:center;}
+  .vid-more{background:#9a3412;color:#ffedd5;font-weight:800;font-size:15px;padding:15px 22px;
+    border-radius:14px;text-decoration:none;text-align:center;flex:1;max-width:220px;
+    display:flex;align-items:center;justify-content:center;gap:8px;}
+  .vid-more svg{width:17px;height:17px;flex:0 0 auto;}
+  .vid-close{background:rgba(255,255,255,.16);color:#fff;font-weight:800;font-size:15px;padding:15px 22px;
+    border-radius:14px;border:1px solid rgba(255,255,255,.28);flex:1;max-width:220px;}
 
   .rest-overlay{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.9);
     display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;
@@ -262,6 +267,30 @@ const VIDEOS = {
   'DB Bench Glute Bridge / Hip Thrust': 'https://youtu.be/29OfN4ztW_g',
   'DB Calf Raise': 'https://www.youtube.com/shorts/ADITZCcUyVo',
   'Plank': 'https://youtu.be/pvIjsG5Svck',
+  // Lime Gardens Day 1 — remaining exercises
+  'Bodyweight Air Squat': 'https://www.youtube.com/watch?v=lcNmEtvrMGo',
+  'Bodyweight Split Squat': 'https://www.youtube.com/watch?v=REflwhg0jNs',
+  'Glute Bridge': 'https://www.youtube.com/watch?v=wPM8icPu6H8',
+  'Goblet Squat': 'https://www.youtube.com/watch?v=zsN2WvklwDk',
+  // Lime Gardens Day 2 — Upper Body
+  'DB Shoulder Rotation (light)': 'https://www.youtube.com/watch?v=gOwur9N0cM0',
+  'Band-free Scap Push-Up': 'https://www.youtube.com/watch?v=MN2X1cpFjqc',
+  'DB Bench Press': 'https://www.youtube.com/watch?v=5Y3VZsLb1Ys',
+  'DB Floor / Bench Press (light)': 'https://www.youtube.com/watch?v=5Y3VZsLb1Ys',
+  'DB One-Arm Row (knee on bench)': 'https://www.youtube.com/watch?v=fURsHPHgssI',
+  'DB Overhead Shoulder Press': 'https://www.youtube.com/watch?v=Vphi6UMhF7o',
+  'DB Incline Bench Press': 'https://www.youtube.com/watch?v=sK4Rvug6ufo',
+  'DB Bent-Over Reverse Fly': 'https://www.youtube.com/watch?v=d1QEddtoOq0',
+  'DB Bicep Curl': 'https://www.youtube.com/watch?v=6DeLZ6cbgWQ',
+  'DB Overhead Tricep Extension': 'https://www.youtube.com/watch?v=-Vyt2QdsR7E',
+  // Lime Gardens Day 3 — Full Body
+  'DB RDL (light)': 'https://youtu.be/hQgFixeXdZo',
+  'DB Deadlift': 'https://www.youtube.com/watch?v=HMcXQyEqJ7A',
+  'DB Bench Press (push-up alt)': 'https://www.youtube.com/watch?v=5Y3VZsLb1Ys',
+  'DB Bulgarian Split Squat': 'https://www.youtube.com/watch?v=rrcJy4gI9ro',
+  'DB Renegade Row': 'https://www.youtube.com/watch?v=NTl_ALR8Tlc',
+  'DB Farmer Carry': 'https://www.youtube.com/watch?v=8OtwXwrJizk',
+  'DB Russian Twist': 'https://www.youtube.com/watch?v=p_dPOhhgovg',
 };
 function ex(name, sets, reps, note, group, type){
   return { id: uid(), name, videoUrl: VIDEOS[name]||'', type:type||'reps', targetSets:sets, targetReps:reps, note:note||'', superset:group };
@@ -783,7 +812,13 @@ function showVideoOverlay(id, name){
         allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen
         onload="var s=document.getElementById('vidSkel'); if(s) s.remove();"></iframe>
     </div>
-    <button class="vid-close" onclick="closeVideo()">✕ Close</button>`;
+    <div class="vid-actions">
+      <a class="vid-more" href="${ytSearchUrl({name:name||''})}" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        More videos
+      </a>
+      <button class="vid-close" onclick="closeVideo()">✕ Close</button>
+    </div>`;
   document.body.appendChild(o);
 }
 function closeVideo(){ const o=document.getElementById('videoOverlay'); if(o) o.remove(); }
