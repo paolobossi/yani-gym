@@ -151,6 +151,16 @@
     max-width:calc(100% - 32px);}
   .rest-fab.running{background:#0b2e5e;border:1px solid var(--blue);}
 
+  /* In-app video player */
+  .video-overlay{position:fixed;inset:0;z-index:90;background:#000;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:20px;padding:20px 8px;}
+  .vid-title{font-size:16px;font-weight:700;color:#fff;text-align:center;max-width:100%;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .vid-frame{width:100%;}
+  .vid-frame iframe{width:100%;aspect-ratio:16/9;border:0;border-radius:10px;}
+  .vid-close{background:rgba(255,255,255,.16);color:#fff;font-weight:800;font-size:17px;padding:15px 46px;
+    border-radius:14px;border:1px solid rgba(255,255,255,.28);}
+
   .rest-overlay{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.9);
     display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;
     padding:24px;text-align:center;}
@@ -575,13 +585,13 @@ function renderWorkout(){
     <div class="topbar">
       <button class="iconbtn" onclick="confirmExit('${w.id}')">‹</button>
       <h1>${wEmoji(w)} ${esc(w.name)}</h1>
+      <button class="btn primary" onclick="confirmExit('${w.id}')">Finish</button>
     </div>
     <div class="screen">
       ${blocks || '<div class="center-empty">No exercises yet.</div>'}
       <div class="add-ex-row">
         <button class="btn blue" onclick="addExercise('${w.id}')">+ Add Exercise</button>
       </div>
-      <button class="btn primary finish-btn" onclick="confirmExit('${w.id}')">Finish Workout</button>
     </div>`;
   updateRestFab();
 }
@@ -610,12 +620,35 @@ function ytSearchUrl(ex){
   return 'https://www.youtube.com/results?search_query=' + q;
 }
 function videoPill(ex){
-  // explicit pinned link if set, otherwise a YouTube search for the exercise
-  const url = ex.videoUrl ? esc(ex.videoUrl) : ytSearchUrl(ex);
-  const label = '▶ Video';
-  return `<a class="pill video" href="${url}" target="_blank" rel="noopener"
-           onclick="event.stopPropagation()">${label}</a>`;
+  return `<button class="pill video" onclick="event.stopPropagation();openVideo('${ex.id}')">▶ Video</button>`;
 }
+/* extract an 11-char YouTube id from watch / youtu.be / shorts / embed URLs */
+function ytId(url){
+  if(!url) return null;
+  let m = url.match(/[?&]v=([\w-]{11})/) || url.match(/youtu\.be\/([\w-]{11})/)
+        || url.match(/\/shorts\/([\w-]{11})/) || url.match(/\/embed\/([\w-]{11})/);
+  return m ? m[1] : null;
+}
+function openVideo(exId){
+  const ex = findW(view.workoutId).exercises.find(e=>e.id===exId); if(!ex) return;
+  const id = ytId(ex.videoUrl);
+  if(id){ showVideoOverlay(id, ex.name); }
+  else { window.open(ex.videoUrl || ytSearchUrl(ex), '_blank', 'noopener'); }  // search fallback
+}
+function showVideoOverlay(id, name){
+  closeVideo();
+  const o = document.createElement('div');
+  o.className='video-overlay'; o.id='videoOverlay';
+  o.innerHTML = `
+    <div class="vid-title">${esc(name||'')}</div>
+    <div class="vid-frame">
+      <iframe src="https://www.youtube.com/embed/${id}?autoplay=1&playsinline=1&rel=0&modestbranding=1"
+        allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen></iframe>
+    </div>
+    <button class="vid-close" onclick="closeVideo()">✕ Close</button>`;
+  document.body.appendChild(o);
+}
+function closeVideo(){ const o=document.getElementById('videoOverlay'); if(o) o.remove(); }
 
 /* ===================== Set edits ===================== */
 function setVal(wid,exid,i,field,val){
