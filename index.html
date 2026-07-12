@@ -823,7 +823,7 @@ function showVideoOverlay(id, name){
     <div class="vid-title">${esc(name||'')}</div>
     <div class="vid-frame">
       <div class="vid-skel" id="vidSkel"></div>
-      <iframe src="https://www.youtube.com/embed/${id}?autoplay=1&playsinline=1&rel=0&modestbranding=1"
+      <iframe src="https://www.youtube-nocookie.com/embed/${id}?autoplay=1&playsinline=1&rel=0&modestbranding=1"
         allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen
         onload="var s=document.getElementById('vidSkel'); if(s) s.remove();"></iframe>
     </div>
@@ -929,7 +929,8 @@ function endRest(beeped){
   if(view.screen==='workout') renderWorkout();
 }
 function stopRest(){ endRest(false); }
-function skipRest(){ endRest(false); }
+/* just hide the full-screen view; the countdown (if any) keeps running in the background */
+function closeRestOverlay(){ const o=document.getElementById('restOverlay'); if(o) o.remove(); }
 function toggleRest(){
   if(rest.running){ clearInterval(rest.timer); rest.running=false; }
   else { rest.running=true; tickLoop(); }
@@ -969,8 +970,8 @@ function showRestOverlay(){
       <button class="btn sm" onclick="setRestPreset(120)">2:00</button>
       <button class="btn sm" onclick="setRestPreset(180)">3:00</button>
     </div>
-    <button class="btn ghost" onclick="skipRest()">Close / Skip</button>`;
-  o.addEventListener('click',e=>{ if(e.target===o) skipRest(); });
+    <button class="btn ghost" onclick="closeRestOverlay()">Close</button>`;
+  o.addEventListener('click',e=>{ if(e.target===o) closeRestOverlay(); });
   document.body.appendChild(o);
   if(!rest.running && rest.remaining>0){ /* wait for start */ }
 }
