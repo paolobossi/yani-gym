@@ -68,6 +68,7 @@
   .wcard .meta{font-size:13px;color:var(--muted);}
   .last-tag{position:absolute;top:12px;right:14px;background:var(--accent);color:#04220f;font-size:10px;
     font-weight:800;padding:3px 8px;border-radius:7px;letter-spacing:.4px;text-transform:uppercase;white-space:nowrap;}
+  .ongoing-tag{background:var(--blue);color:#fff;}
   .last-done{font-size:13px;color:var(--muted);margin:5px 0 0;display:flex;align-items:center;gap:5px;}
   .clk{width:13px;height:13px;flex:0 0 auto;}
 
@@ -626,7 +627,9 @@ function dayCard(w){
   const last = lastSessionDate(w.id);
   const clock = `<svg class="clk" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>`;
   const lastLine = last ? `<p class="last-done">${clock}${relDay(last)}</p>` : '';
-  const tag = w.id===lastSessionWorkoutId() ? `<span class="last-tag">Last session</span>` : '';
+  const isOngoing = activeWorkout && activeWorkout.id===w.id;
+  const tag = isOngoing ? `<span class="last-tag ongoing-tag">Ongoing</span>`
+    : (w.id===lastSessionWorkoutId() ? `<span class="last-tag">Last session</span>` : '');
   return `<div class="wcard">
     ${tag}
     <div class="body" onclick="confirmStart('${w.id}')">
