@@ -118,6 +118,8 @@
   .setnum{width:34px;height:32px;border-radius:8px;background:var(--panel-2);
     display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;}
   tr.done .setnum{background:#1c4028;}
+  table.sets tr.next-row td{background:rgba(234,179,8,.16);}
+  tr.next-row .setnum{background:#4a3b08;color:#fde68a;}
   .prev{font-size:13px;color:var(--muted);text-align:center;white-space:nowrap;}
   .prev.has{color:#c9d2de;}
   .cell-dash{width:70px;max-width:78px;height:38px;display:inline-flex;align-items:center;
@@ -679,11 +681,41 @@ function ensureDraft(w){
   return draft;
 }
 
+/* Order sets the way they're actually performed: supersets interleave
+   round-by-round across their exercises, standalone exercises go in order. */
+function buildSlotOrder(w,draft){
+  const slots=[]; const exs=w.exercises; let idx=0;
+  while(idx<exs.length){
+    const cur=exs[idx];
+    if(cur.superset==null){
+      (draft[cur.id]||[]).forEach((r,i)=>slots.push({exId:cur.id,i}));
+      idx++;
+    } else {
+      let j=idx; const group=[];
+      while(j<exs.length && exs[j].superset===cur.superset){ group.push(exs[j]); j++; }
+      const maxRows=Math.max(0,...group.map(g=>(draft[g.id]||[]).length));
+      for(let r=0;r<maxRows;r++){
+        group.forEach(g=>{ if(draft[g.id] && draft[g.id][r]) slots.push({exId:g.id,i:r}); });
+      }
+      idx=j;
+    }
+  }
+  return slots;
+}
+function nextPendingSlot(w,draft){
+  return buildSlotOrder(w,draft).find(s=>!draft[s.exId][s.i].done) || null;
+}
+function scrollToNextSet(){
+  const el=document.getElementById('nextset');
+  if(el) el.scrollIntoView({behavior:'smooth', block:'center'});
+}
+
 function renderWorkout(){
   clearInterval(workoutTimer);
   const w = findW(view.workoutId);
   if(!w){ go('home'); return; }
   const draft = ensureDraft(w);
+  const nextSlot = nextPendingSlot(w, draft);
 
   let blocks='';
   w.exercises.forEach((ex,idx)=>{
@@ -717,13 +749,15 @@ function renderWorkout(){
     const body = rows.map((r,i)=>{
       const p = prev && prev[i];
       const prevTxt = p ? (isTime ? fmtTime(p.time) : (bw ? `${p.reps||0} reps` : `${p.kg||0} × ${p.reps||0}`)) : '–';
-      const doneCls = r.done?'done':'';
+      const isNext = nextSlot && nextSlot.exId===ex.id && nextSlot.i===i;
+      const rowCls = (r.done?'done':'') + (isNext?' next-row':'');
+      const rowId = isNext ? ' id="nextset"' : '';
       let setTr;
       if(isTime){
         const curT = r.time!==''? splitTime(r.time) : null;
         const prevT = p ? splitTime(p.time) : null;
         const mId='tmin_'+ex.id+'_'+i, sId='tsec_'+ex.id+'_'+i;
-        setTr = `<tr class="${doneCls}">
+        setTr = `<tr${rowId} class="${rowCls}">
           <td class="set-c"><span class="setnum">${i+1}</span></td>
           <td class="prev ${p?'has':''}">${prevTxt}</td>
           <td>
@@ -744,7 +778,7 @@ function renderWorkout(){
           ? `<td><div class="cell-dash">–</div></td>`
           : `<td><input class="cell-in" inputmode="decimal" placeholder="${p?(p.kg||0):''}" value="${r.kg}"
                onchange="setVal('${w.id}','${ex.id}',${i},'kg',this.value)"></td>`;
-        setTr = `<tr class="${doneCls}">
+        setTr = `<tr${rowId} class="${rowCls}">
           <td class="set-c"><span class="setnum">${i+1}</span></td>
           <td class="prev ${p?'has':''}">${prevTxt}</td>
           ${kgCell}
@@ -865,6 +899,7 @@ function toggleDone(wid,exid,i){
       save();
     }
     startRestFor(exid,i);      // renders the countdown bar under this set
+    scrollToNextSet();
   } else {
     if(rest.anchor && rest.anchor.exId===exid && rest.anchor.setIdx===i) stopRest();
     renderWorkout();
