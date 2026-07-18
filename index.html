@@ -26,11 +26,17 @@
   .app{max-width:640px;margin:0 auto;min-height:100vh;position:relative;}
 
   /* Top bar */
-  .topbar{position:sticky;top:0;z-index:20;background:rgba(0,0,0,.82);
-    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
-    padding:calc(env(safe-area-inset-top) + 10px) 16px 10px;
-    display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--line);}
+  .topbar-wrap{position:sticky;top:0;z-index:20;background:rgba(0,0,0,.82);
+    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--line);}
+  .topbar{padding:calc(env(safe-area-inset-top) + 10px) 16px 10px;
+    display:flex;align-items:center;gap:10px;}
   .topbar h1{font-size:17px;margin:0;font-weight:800;letter-spacing:-.3px;flex:1;}
+  .sticky-rest{position:relative;overflow:hidden;background:#10233b;margin:0;
+    border-radius:0;padding:6px 0;text-align:center;cursor:pointer;}
+  .sticky-rest-fill{position:absolute;left:0;top:0;bottom:0;width:100%;background:var(--blue);
+    transition:width 1s linear;}
+  .sticky-rest-time{position:relative;z-index:1;color:#fff;font-weight:800;font-size:14px;
+    font-variant-numeric:tabular-nums;}
   .elapsed{font-size:15px;color:var(--txt);font-variant-numeric:tabular-nums;font-weight:800;
     flex:0 0 auto;background:var(--panel-2);padding:6px 10px;border-radius:9px;}
   .modal-sub{color:var(--muted);margin:-6px 0 16px;font-size:14px;}
@@ -799,16 +805,20 @@ function renderWorkout(){
   });
 
   app.innerHTML = `
-    <div class="topbar">
-      <button class="iconbtn" onclick="confirmExit('${w.id}')">‹</button>
-      <h1>${wEmoji(w)} ${esc(w.name)}</h1>
-      <button class="btn primary" onclick="confirmExit('${w.id}')">Finish</button>
+    <div class="topbar-wrap">
+      <div class="topbar">
+        <button class="iconbtn" onclick="confirmExit('${w.id}')">‹</button>
+        <h1>${wEmoji(w)} ${esc(w.name)}</h1>
+        <button class="btn primary" onclick="confirmExit('${w.id}')">Finish</button>
+      </div>
+      ${stickyRestBar()}
     </div>
     <div class="screen">
       ${blocks || '<div class="center-empty">No exercises yet.</div>'}
       <div class="add-ex-row">
         <button class="btn blue" onclick="addExercise('${w.id}')">+ Add Exercise</button>
       </div>
+      <button class="btn primary finish-btn" onclick="confirmExit('${w.id}')">Finish Workout</button>
     </div>`;
   updateRestFab();
 }
@@ -822,14 +832,9 @@ function planLine(ex){
 function exRest(ex){ return (ex && ex.rest!=null) ? ex.rest : (DB.settings.restDefault||90); }
 function isBW(ex){ return /bodyweight/i.test(ex.note||''); }
 function restPct(){ return rest.total ? Math.max(0,Math.min(100, rest.remaining/rest.total*100)) : 0; }
+/* live countdown now lives in the sticky bar under the header; inline rows just show the set rest duration */
 function restRow(ex,i,colspan){
-  const active = rest.running && rest.anchor && rest.anchor.exId===ex.id && rest.anchor.setIdx===i;
-  const inner = active
-    ? `<div class="rest-bar" id="restbar" onclick="openRest()">
-         <div class="rest-fill" id="restfill" style="width:${restPct()}%"></div>
-         <span class="rest-bar-time">${fmtTime(rest.remaining)}</span>
-       </div>`
-    : `<div class="rest-line" onclick="editRest('${ex.id}')"><span>${fmtTime(exRest(ex))}</span></div>`;
+  const inner = `<div class="rest-line" onclick="editRest('${ex.id}')"><span>${fmtTime(exRest(ex))}</span></div>`;
   return `<tr class="rest-tr"><td colspan="${colspan}">${inner}</td></tr>`;
 }
 function ytSearchUrl(ex){
@@ -984,10 +989,18 @@ function setRestPreset(sec){
   if(!rest.running){ rest.running=true; tickLoop(); }
   updateRestDisplays(); updateRestFab();
 }
-/* update every live display: inline bar, floating fab, overlay */
+/* live countdown, pinned under the header so it stays visible while scrolling */
+function stickyRestBar(){
+  if(!rest.running) return '';
+  return `<div class="sticky-rest" id="stickyRest" onclick="openRest()">
+    <div class="sticky-rest-fill" id="stickyFill" style="width:${restPct()}%"></div>
+    <span class="sticky-rest-time" id="stickyTime">${fmtTime(rest.remaining)}</span>
+  </div>`;
+}
+/* update every live display: sticky bar, floating fab, overlay */
 function updateRestDisplays(){
-  const bt=document.querySelector('#restbar .rest-bar-time'); if(bt) bt.textContent=fmtTime(rest.remaining);
-  const fill=document.getElementById('restfill'); if(fill) fill.style.width=restPct()+'%';
+  const fill=document.getElementById('stickyFill'); if(fill) fill.style.width=restPct()+'%';
+  const st=document.getElementById('stickyTime'); if(st) st.textContent=fmtTime(rest.remaining);
   updateRestFab();
   const t=document.getElementById('restTime');
   if(t){ t.textContent=fmtTime(rest.remaining); t.classList.toggle('warn',rest.remaining<=10); }
