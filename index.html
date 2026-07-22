@@ -971,7 +971,11 @@ async function finishSyncFlow(localMsg){
   if(!syncOn()){ go('home'); if(localMsg) toast(localMsg); return; }
   clearTimeout(pushTimer);
   showSaveOverlay();
+  const started = Date.now();
   await pushRemote();
+  const minVisible = 1000;   // fast pushes can resolve in well under 1s — keep the spinner readable
+  const rest = minVisible - (Date.now()-started);
+  if(rest > 0) await new Promise(r=>setTimeout(r, rest));
   hideSaveOverlay();
   go('home');
   toast(syncStatus==='synced'
