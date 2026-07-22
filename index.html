@@ -168,6 +168,17 @@
   .rest-fab.running{background:#0b2e5e;border:1px solid var(--blue);}
 
   /* In-app video player */
+  /* Saving-to-cloud loader */
+  .save-overlay{position:fixed;inset:0;z-index:95;background:rgba(0,0,0,.55);
+    display:flex;align-items:center;justify-content:center;}
+  .save-box{background:var(--panel);border:1px solid var(--line);border-radius:16px;
+    padding:28px 36px;display:flex;flex-direction:column;align-items:center;gap:14px;
+    box-shadow:0 12px 32px rgba(0,0,0,.5);}
+  .spinner{width:32px;height:32px;border:3px solid rgba(255,255,255,.15);
+    border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .save-box span{color:var(--txt);font-weight:700;font-size:14px;}
+
   .video-overlay{position:fixed;inset:0;z-index:90;background:#000;display:flex;flex-direction:column;
     align-items:center;justify-content:center;gap:20px;padding:20px 8px;}
   .vid-title{font-size:16px;font-weight:700;color:#fff;text-align:center;max-width:100%;
@@ -249,6 +260,7 @@ const KEY = 'yaniGym.v2';
    Left blank => app runs local-only (no cloud). */
 const SB_URL = 'https://nepkjebmtddpmdviwaxv.supabase.co';
 const SB_KEY = 'sb_publishable_l9HdPDqOzNaroSmQh0pd-g_1uxouu03';
+const SHOW_ADD_SET = false;   // hidden for now; flip to true to bring "+ Add Set" back
 const GROUP_VARS = ['--g0','--g1','--g2','--g3','--g4','--g5'];
 const GROUP_LETTERS = ['A','B','C','D','E','F'];
 const WORKOUT_EMOJIS = ['🏋️','🦵','💪','🔥','🚴','🤸','🧘','⚡'];
@@ -337,7 +349,7 @@ function limeGardensWorkouts(){
       ex('Glute Bridge', 2, '15', 'bodyweight', 0),
       ex('DB RDL (light)', 2, '10', 'warm-up weight', 0),
       ex('Deadbug', 2, '20', 'bodyweight', 0),
-      ex('DB Deadlift', 4, '8–12', 'DB each hand', 1),
+      ex('DB Deadlift', 3, '8–12', 'DB each hand', 1),
       ex('DB Bench Press (push-up alt)', 3, '10–12', 'flat bench', 1),
       ex('DB Bulgarian Split Squat', 3, '10 / leg', 'rear foot on bench', 1),
       ex('DB Renegade Row', 3, '8–10 / side', 'plank on DBs', 1),
@@ -662,7 +674,7 @@ function renderHome(){
   app.innerHTML = `
     <div class="screen home">
       <div class="home-top">
-        <h1 class="welcome">Let's go, Ayanna,<br>you've got this!</h1>
+        <h1 class="welcome">Let's go, Ayanna!</h1>
         <div class="home-actions">
           ${syncConfigured()?`<button class="iconbtn sync-${syncStatus}" id="syncBtn" onclick="syncMenu()" title="Cloud sync">☁️</button>`:''}
           <button class="iconbtn" onclick="dataMenu()" title="Data">⤓</button>
@@ -713,7 +725,14 @@ function nextPendingSlot(w,draft){
 }
 function scrollToNextSet(){
   const el=document.getElementById('nextset');
-  if(el) el.scrollIntoView({behavior:'smooth', block:'center'});
+  if(!el) return;
+  // anchor on the exercise's title, not the row, so the sticky header/rest bar never covers it
+  const exBlock = el.closest('.ex');
+  const target = (exBlock && exBlock.querySelector('.ex-head')) || el;
+  const wrap = document.querySelector('.topbar-wrap');
+  const headerH = wrap ? wrap.getBoundingClientRect().height : 0;
+  const y = window.scrollY + target.getBoundingClientRect().top - headerH - 12;
+  window.scrollTo({top: Math.max(0,y), behavior:'smooth'});
 }
 
 function renderWorkout(){
@@ -796,11 +815,14 @@ function renderWorkout(){
       return setTr + restRow(ex, i, colspan);
     }).join('');
 
+    const addSetBtn = SHOW_ADD_SET
+      ? `<button class="addset" onclick="addSet('${w.id}','${ex.id}')">+ Add Set (${fmtTime(exRest(ex))})</button>`
+      : '';
     blocks += `<div class="ex ${grouped?'grouped':''}" style="${grouped?`--gc:var(${gVar});`:''}">
       ${ssBand}
       ${head}
       <table class="sets"><thead><tr>${cols}</tr></thead><tbody>${body}</tbody></table>
-      <button class="addset" onclick="addSet('${w.id}','${ex.id}')">+ Add Set (${fmtTime(exRest(ex))})</button>
+      ${addSetBtn}
     </div>`;
   });
 
@@ -918,7 +940,7 @@ function addSet(wid,exid){
 }
 
 /* ===================== Finish ===================== */
-function finishWorkout(wid){
+async function finishWorkout(wid){
   closeModal();
   const w=findW(wid); const draft=DB.drafts[wid]||{};
   const log={};
@@ -932,15 +954,36 @@ function finishWorkout(wid){
   });
   if(!any){
     if(!confirm('No sets were checked off. Finish without saving progress?')) return;
-    delete DB.drafts[wid]; activeWorkout=null; save(); go('home'); return;
+    delete DB.drafts[wid]; activeWorkout=null; save();
+    await finishSyncFlow();
+    return;
   }
   DB.sessions.push({ id:uid(), workoutId:wid, date:new Date().toISOString(), log });
   delete DB.drafts[wid];
   activeWorkout=null;
   save();
-  toast('💪 Session saved!');
-  go('home');
+  await finishSyncFlow('💪 Session saved!');
 }
+/* push to the cloud right away (not the usual debounce) while still on the workout screen,
+   with a small spinner overlay — Ayanna may lock her phone straight after finishing, and a
+   queued background timer could get skipped. Only navigate home once it's settled. */
+async function finishSyncFlow(localMsg){
+  if(!syncOn()){ go('home'); if(localMsg) toast(localMsg); return; }
+  clearTimeout(pushTimer);
+  showSaveOverlay();
+  await pushRemote();
+  hideSaveOverlay();
+  go('home');
+  toast(syncStatus==='synced'
+    ? (localMsg ? localMsg+' · synced ☁️' : '☁️ Synced')
+    : (localMsg ? localMsg+' — will sync when online' : '💪 Saved — will sync when back online'));
+}
+function showSaveOverlay(){
+  const o=document.createElement('div'); o.className='save-overlay'; o.id='saveOverlay';
+  o.innerHTML=`<div class="save-box"><div class="spinner"></div><span>Saving…</span></div>`;
+  document.body.appendChild(o);
+}
+function hideSaveOverlay(){ const o=document.getElementById('saveOverlay'); if(o) o.remove(); }
 
 /* ===================== Rest timer ===================== */
 let rest = { remaining:0, total:0, timer:null, running:false, anchor:null };
