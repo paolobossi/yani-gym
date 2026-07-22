@@ -56,6 +56,14 @@
   .iconbtn.sync-synced{background:var(--accent-d);}
   .iconbtn.sync-offline{background:#3a2e12;}
   .iconbtn.sync-off{opacity:.55;}
+  .sync-banner{display:flex;align-items:center;justify-content:space-between;gap:14px;
+    background:#132132;border:1px solid #2b4a63;border-left:4px solid var(--blue);
+    padding:14px 16px;border-radius:12px;margin-bottom:16px;
+    box-shadow:0 6px 18px rgba(0,0,0,.4);}
+  .sync-banner-text{display:flex;flex-direction:column;gap:3px;min-width:0;}
+  .sync-banner-text strong{color:#fff;font-size:14px;font-weight:800;}
+  .sync-banner-text span{color:#93b3d1;font-size:12px;font-weight:600;line-height:1.3;}
+  .sync-banner .btn{flex:0 0 auto;}
   .welcome{flex:1;margin:0;font-size:31px;line-height:1.12;font-weight:800;letter-spacing:-.6px;}
   .muted{color:var(--muted);}
   .center-empty{text-align:center;color:var(--muted);padding:60px 20px;}
@@ -405,14 +413,23 @@ const SEED = {
 };
 
 function uid(){ return 'x'+Math.random().toString(36).slice(2,9); }
+/* restore any default workout that's missing (e.g. accidentally deleted), one by one —
+   keeps whatever the device still has untouched, and re-adds only what's gone, in the
+   normal Lime Gardens → Complete Gym order */
+function restoreMissingDefaults(d){
+  const defaults = [ ...limeGardensWorkouts(), ...completeGymWorkouts() ];
+  const key = w => w.program+'|'+w.name;
+  const have = new Map(d.workouts.map(w=>[key(w),w]));
+  const merged = defaults.map(def => have.get(key(def)) || def);
+  const defaultKeys = new Set(defaults.map(key));
+  d.workouts.forEach(w=>{ if(!defaultKeys.has(key(w))) merged.push(w); });  // keep any custom workouts too
+  d.workouts = merged;
+}
 function migrate(d){
   d.workouts = d.workouts || [];
   // existing (pre-programs) workouts belong to Complete Gym
   d.workouts.forEach(w=>{ if(!w.program) w.program = 'Complete Gym'; });
-  // add the Lime Gardens program to installs that predate it (kept above Complete Gym)
-  if(!d.workouts.some(w=>w.program==='Lime Gardens')){
-    d.workouts = [ ...limeGardensWorkouts(), ...d.workouts ];
-  }
+  restoreMissingDefaults(d);
   // backfill curated videos into empty slots (won't overwrite user-pinned links)
   d.workouts.forEach(w=>w.exercises.forEach(e=>{ if(!e.videoUrl && VIDEOS[e.name]) e.videoUrl = VIDEOS[e.name]; }));
   d.sessions = d.sessions || []; d.drafts = d.drafts || {}; d.settings = d.settings || { restDefault:90 };
@@ -513,11 +530,12 @@ function syncMenu(){
       </div>`);
   }
 }
-async function connectSync(){
-  const code = (val('newCode')||'').trim(); if(!code) return;
+/* shared connect logic — used by the manual "Connect" button and by silent auto-connect */
+async function doConnect(code){
   sbCode = code; localStorage.setItem('yaniGym.syncCode', code);
+  localStorage.removeItem('yaniGym.syncOptOut');
   lastServerTs=''; localStorage.setItem('yaniGym.serverTs','');
-  closeModal(); setSyncStatus('syncing');
+  setSyncStatus('syncing');
   try{
     const rows = await sbRpc('yani_get', { p_profile:code });
     const row = Array.isArray(rows) ? rows[0] : rows;
@@ -533,11 +551,34 @@ async function connectSync(){
     } else {
       dirty=true; localStorage.setItem('yaniGym.dirty','1'); await pushRemote();     // first upload
     }
-    render(); startSyncLoops(); toast('☁️ Cloud sync on');
-  }catch(e){ setSyncStatus('offline'); toast('Could not reach cloud'); }
+    startSyncLoops();
+    return true;
+  }catch(e){ setSyncStatus('offline'); return false; }
+}
+async function connectSync(){
+  const code = (val('newCode')||'').trim(); if(!code) return;
+  closeModal();
+  const ok = await doConnect(code);
+  render();
+  toast(ok ? '☁️ Cloud sync on' : 'Could not reach cloud');
+}
+/* one tap from the home-screen banner — connects immediately with a fresh code, no modal */
+async function bannerConnect(){
+  const ok = await doConnect(suggestCode());
+  render();
+  toast(ok ? '☁️ Cloud sync on' : 'Could not reach cloud — try again');
+}
+/* silently connect brand-new devices so most people never have to find the ☁️ button at all;
+   respects an explicit "Turn off sync" from before */
+async function autoConnectIfNeeded(){
+  if(!syncConfigured() || sbCode) return;
+  if(localStorage.getItem('yaniGym.syncOptOut')==='1') return;
+  const ok = await doConnect(suggestCode());
+  if(ok){ render(); toast('☁️ Cloud sync enabled'); }
 }
 function disconnectSync(){
   sbCode=''; localStorage.removeItem('yaniGym.syncCode');
+  localStorage.setItem('yaniGym.syncOptOut','1');   // don't silently reconnect next time
   clearInterval(pullTimer); setSyncStatus('off'); closeModal(); renderHome(); toast('Cloud sync off');
 }
 function changeSyncCode(){ sbCode=''; localStorage.removeItem('yaniGym.syncCode'); clearInterval(pullTimer); syncMenu(); }
@@ -649,7 +690,7 @@ function dayCard(w){
   const lastLine = last ? `<p class="last-done">${clock}${relDay(last)}</p>` : '';
   const isOngoing = activeWorkout && activeWorkout.id===w.id;
   const tag = isOngoing ? `<span class="last-tag ongoing-tag">Ongoing</span>`
-    : (w.id===lastSessionWorkoutId() ? `<span class="last-tag">Last session</span>` : '');
+    : (w.id===lastSessionWorkoutId() ? `<span class="last-tag">Completed</span>` : '');
   return `<div class="wcard">
     ${tag}
     <div class="body" onclick="confirmStart('${w.id}')">
@@ -680,6 +721,13 @@ function renderHome(){
           <button class="iconbtn" onclick="dataMenu()" title="Data">⤓</button>
         </div>
       </div>
+      ${syncConfigured() && !syncOn() ? `<div class="sync-banner">
+        <div class="sync-banner-text">
+          <strong>☁️ Cloud sync is off</strong>
+          <span>Turn it on to back up progress and view it on other devices</span>
+        </div>
+        <button class="btn sm blue" onclick="bannerConnect()">Connect</button>
+      </div>` : ''}
       ${chartCard()}
       ${body}
     </div>`;
@@ -1365,6 +1413,7 @@ render();
 
 /* cloud sync: initial pull + keep in sync on focus / reconnect */
 startSyncLoops();
+autoConnectIfNeeded();
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden) pullRemote(); });
 window.addEventListener('online',()=>{ pushRemote(); pullRemote(); });
 </script>
