@@ -968,16 +968,18 @@ async function finishWorkout(wid){
    with a small spinner overlay — Ayanna may lock her phone straight after finishing, and a
    queued background timer could get skipped. Only navigate home once it's settled. */
 async function finishSyncFlow(localMsg){
-  if(!syncOn()){ go('home'); if(localMsg) toast(localMsg); return; }
+  // always show the saving spinner, even with no cloud sync connected on this device —
+  // consistent feedback beats a silent instant jump to the home screen
   clearTimeout(pushTimer);
   showSaveOverlay();
   const started = Date.now();
-  await pushRemote();
+  if(syncOn()) await pushRemote();
   const minVisible = 1000;   // fast pushes can resolve in well under 1s — keep the spinner readable
   const rest = minVisible - (Date.now()-started);
   if(rest > 0) await new Promise(r=>setTimeout(r, rest));
   hideSaveOverlay();
   go('home');
+  if(!syncOn()){ if(localMsg) toast(localMsg); return; }
   toast(syncStatus==='synced'
     ? (localMsg ? localMsg+' · synced ☁️' : '☁️ Synced')
     : (localMsg ? localMsg+' — will sync when online' : '💪 Saved — will sync when back online'));
