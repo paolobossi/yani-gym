@@ -274,6 +274,7 @@ const SB_URL = 'https://nepkjebmtddpmdviwaxv.supabase.co';
 const SB_KEY = 'sb_publishable_l9HdPDqOzNaroSmQh0pd-g_1uxouu03';
 const SHOW_ADD_SET = false;   // hidden for now; flip to true to bring "+ Add Set" back
 const SHOW_ADD_EXERCISE = false;   // hidden for now; flip to true to bring "+ Add Exercise" back
+const SHOW_WORKOUT_MENU = false;   // hidden for now; flip to true to bring back rename/delete workout (•••)
 const GROUP_VARS = ['--g0','--g1','--g2','--g3','--g4','--g5'];
 const GROUP_LETTERS = ['A','B','C','D','E','F'];
 const WORKOUT_EMOJIS = ['🏋️','🦵','💪','🔥','🚴','🤸','🧘','⚡'];
@@ -715,7 +716,7 @@ function dayCard(w){
       <p class="meta">${w.exercises.length} exercise${w.exercises.length!==1?'s':''}</p>
       ${lastLine}
     </div>
-    <button class="pill menu" onclick="event.stopPropagation();workoutMenu('${w.id}')">•••</button>
+    ${SHOW_WORKOUT_MENU ? `<button class="pill menu" onclick="event.stopPropagation();workoutMenu('${w.id}')">•••</button>` : ''}
     <div class="chev" onclick="confirmStart('${w.id}')">›</div>
   </div>`;
 }
