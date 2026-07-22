@@ -71,7 +71,11 @@
   /* Program groups */
   .prog-group{margin-bottom:24px;}
   .prog-title{font-size:13px;font-weight:800;letter-spacing:1px;text-transform:uppercase;
-    color:var(--muted);margin:2px 0 11px 3px;}
+    color:var(--muted);margin:2px 0 11px 0;display:flex;align-items:center;gap:6px;
+    cursor:pointer;user-select:none;padding:4px 3px;}
+  .prog-chevron{width:14px;height:14px;flex:0 0 auto;transition:transform .18s ease;color:var(--muted);}
+  .prog-title.collapsed .prog-chevron{transform:rotate(-90deg);}
+  .prog-cards{overflow:hidden;}
 
   /* Workout list cards */
   .wcard{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
@@ -715,14 +719,34 @@ function dayCard(w){
     <div class="chev" onclick="confirmStart('${w.id}')">›</div>
   </div>`;
 }
+/* which program sections are collapsed on the home screen — a display preference,
+   not training data, so it's kept device-local rather than synced */
+let collapsedPrograms;
+const rawCollapsed = localStorage.getItem('yaniGym.collapsed');
+if(rawCollapsed===null){
+  collapsedPrograms = new Set(['Complete Gym']);   // no preference saved yet — collapsed by default
+} else {
+  try{ collapsedPrograms = new Set(JSON.parse(rawCollapsed)); }
+  catch(e){ collapsedPrograms = new Set(['Complete Gym']); }
+}
+function toggleProgramCollapse(program){
+  if(collapsedPrograms.has(program)) collapsedPrograms.delete(program);
+  else collapsedPrograms.add(program);
+  localStorage.setItem('yaniGym.collapsed', JSON.stringify([...collapsedPrograms]));
+  renderHome();
+}
+const CHEVRON_SVG = `<svg class="prog-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>`;
 function renderHome(){
   // group workouts by program, preserving first-appearance order
   const order=[], groups={};
   DB.workouts.forEach(w=>{ const p=wProgram(w); if(!(p in groups)){ groups[p]=[]; order.push(p); } groups[p].push(w); });
-  let body = order.map(p=>`<div class="prog-group">
-      <h2 class="prog-title">${esc(p)}</h2>
-      ${groups[p].map(dayCard).join('')}
-    </div>`).join('');
+  let body = order.map(p=>{
+    const isCollapsed = collapsedPrograms.has(p);
+    return `<div class="prog-group">
+      <h2 class="prog-title ${isCollapsed?'collapsed':''}" onclick="toggleProgramCollapse('${esc(p)}')">${CHEVRON_SVG}${esc(p)}</h2>
+      ${isCollapsed ? '' : `<div class="prog-cards">${groups[p].map(dayCard).join('')}</div>`}
+    </div>`;
+  }).join('');
   if(!DB.workouts.length) body = `<div class="center-empty">No workouts yet.</div>`;
 
   app.innerHTML = `
