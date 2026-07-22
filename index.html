@@ -269,6 +269,7 @@ const KEY = 'yaniGym.v2';
 const SB_URL = 'https://nepkjebmtddpmdviwaxv.supabase.co';
 const SB_KEY = 'sb_publishable_l9HdPDqOzNaroSmQh0pd-g_1uxouu03';
 const SHOW_ADD_SET = false;   // hidden for now; flip to true to bring "+ Add Set" back
+const SHOW_ADD_EXERCISE = false;   // hidden for now; flip to true to bring "+ Add Exercise" back
 const GROUP_VARS = ['--g0','--g1','--g2','--g3','--g4','--g5'];
 const GROUP_LETTERS = ['A','B','C','D','E','F'];
 const WORKOUT_EMOJIS = ['🏋️','🦵','💪','🔥','🚴','🤸','🧘','⚡'];
@@ -321,7 +322,7 @@ const VIDEOS = {
   'DB Bench Press (push-up alt)': 'https://www.youtube.com/watch?v=5Y3VZsLb1Ys',
   'DB Bulgarian Split Squat': 'https://www.youtube.com/watch?v=rrcJy4gI9ro',
   'DB Renegade Row': 'https://www.youtube.com/watch?v=NTl_ALR8Tlc',
-  'DB Farmer Carry': 'https://www.youtube.com/watch?v=8OtwXwrJizk',
+  'DB Squat to Press': 'https://www.youtube.com/watch?v=upofg7phmDI',
   'DB Russian Twist': 'https://www.youtube.com/watch?v=p_dPOhhgovg',
 };
 function ex(name, sets, reps, note, group, type){
@@ -361,7 +362,7 @@ function limeGardensWorkouts(){
       ex('DB Bench Press (push-up alt)', 3, '10–12', 'flat bench', 1),
       ex('DB Bulgarian Split Squat', 3, '10 / leg', 'rear foot on bench', 1),
       ex('DB Renegade Row', 3, '8–10 / side', 'plank on DBs', 1),
-      ex('DB Farmer Carry', 3, '30–40s', 'heavy, walk', 2, 'time'),
+      ex('DB Squat to Press', 3, '10–12', 'DB each hand', 2),
       ex('DB Russian Twist', 3, '20', 'one DB, seated', 2),
     ]},
   ];
@@ -425,11 +426,23 @@ function restoreMissingDefaults(d){
   d.workouts.forEach(w=>{ if(!defaultKeys.has(key(w))) merged.push(w); });  // keep any custom workouts too
   d.workouts = merged;
 }
+/* one-time swap for anyone who already has the old "DB Farmer Carry" exercise saved —
+   replaces it in place (same position/superset) with DB Squat to Press */
+function swapFarmerCarry(d){
+  d.workouts.forEach(w=>{
+    const i = w.exercises.findIndex(e=>e.name==='DB Farmer Carry');
+    if(i!==-1){
+      const old = w.exercises[i];
+      w.exercises[i] = ex('DB Squat to Press', 3, '10–12', 'DB each hand', old.superset);
+    }
+  });
+}
 function migrate(d){
   d.workouts = d.workouts || [];
   // existing (pre-programs) workouts belong to Complete Gym
   d.workouts.forEach(w=>{ if(!w.program) w.program = 'Complete Gym'; });
   restoreMissingDefaults(d);
+  swapFarmerCarry(d);
   // backfill curated videos into empty slots (won't overwrite user-pinned links)
   d.workouts.forEach(w=>w.exercises.forEach(e=>{ if(!e.videoUrl && VIDEOS[e.name]) e.videoUrl = VIDEOS[e.name]; }));
   d.sessions = d.sessions || []; d.drafts = d.drafts || {}; d.settings = d.settings || { restDefault:90 };
@@ -885,9 +898,9 @@ function renderWorkout(){
     </div>
     <div class="screen">
       ${blocks || '<div class="center-empty">No exercises yet.</div>'}
-      <div class="add-ex-row">
+      ${SHOW_ADD_EXERCISE ? `<div class="add-ex-row">
         <button class="btn blue" onclick="addExercise('${w.id}')">+ Add Exercise</button>
-      </div>
+      </div>` : ''}
       <button class="btn primary finish-btn" onclick="confirmExit('${w.id}')">Finish Workout</button>
     </div>`;
   updateRestFab();
